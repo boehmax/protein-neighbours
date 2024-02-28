@@ -8,7 +8,7 @@ protein.assembly <- read.table('data/assm_accs_proteins.txt', header = FALSE)
 # Read files for neighbour classification and clades####
 read_clades <- function(){
   # Load clade information from text files
-  clade_files <- list.files(mapping_path, pattern = "Clade.*_20231130.txt", full.names = TRUE)
+  clade_files <- list.files('data/clades', pattern = "Clade.*_20231130.txt", full.names = TRUE)
   
   # Define a function to read and process each file
   process_clade_file <- function(file, clade) {

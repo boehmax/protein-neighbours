@@ -23,13 +23,13 @@ main <- function(){
   
   # Generate protein alias data from files in representative folder
   PROTEIN_ALIAS <- read_represatatives() 
-
-  # Get neighboring proteins
-  all.neighbours <- collec.all.neigbour(protein.assembly, BASEPAIRS, MAX_NEIGHBORS)
   
-  #check if results are saved
+  #check if results are already present and if not generate them, it will take a long while if the results need to be generated 
   if(file.exists(paste('output/all_neighbours_bp',BASEPAIRS, '_n', MAX_NEIGHBORS,'.csv', sep = ""))){
     all.neighbours <- read_csv(paste('output/all_neighbours_bp',BASEPAIRS, '_n', MAX_NEIGHBORS,'.csv', sep = ""))
+  }else{
+    # Get neighboring proteins
+    all.neighbours <- collec.all.neigbour(protein.assembly, BASEPAIRS, MAX_NEIGHBORS)
   }
   
   # Plot the neighbors
@@ -52,5 +52,10 @@ main <- function(){
   annotated_neighbours <- read_csv("output/types_of_neighbours_annotated.csv", show_col_types = FALSE)
   
   # Combine and plot
-  df <- combine_and_plot(all.neighbours, cluster_domains, annotated_neighbours, clades)
+  combined_df <- combine_and_plot(all.neighbours, cluster_domains, annotated_neighbours, clades)
+
+  # Plot data
+  plot_neighbours_per_clade(combined_df)
 }
+
+main()

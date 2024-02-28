@@ -20,15 +20,15 @@ getAttributeField <- function (x, field, attrsep = ";") {
 # Define a function to find the protein alias
 protein.alias <- function(protein.id, alias = PROTEIN_ALIAS, verbose = FALSE, identi = FALSE){
   # Check if the protein ID is in the alias database
-  if(length(PIGI.alias$alias == protein.id) > 0){
+  if(length(alias$alias == protein.id) > 0){
     # If it is, find the corresponding PIGI
-    result <- PIGI.alias %>%
+    result <- alias %>%
       distinct(PIGI, alias) %>%
       filter(alias == protein.id) %>%
       select(PIGI)
     # Also find the corresponding identity
     if(identi){
-      percent <- PIGI.alias %>%
+      percent <- alias %>%
         filter(alias == protein.id) %>%
         select(identity)
     }
@@ -162,7 +162,7 @@ plot.neighbours <- function(all.neighbours.df, protein.id){
 } 
 
 
-combine_and_plot <- function(neighbours_data, cd_data, neighbour_types, clades_assign){
+combine_and_plot <- function(neighbours_data, cd_data, neighbour_types, clade_assign){
   # Merge the fasta and the clade assignment
   neighbours_with_clades <- neighbours_data %>%
     left_join(clade_assign, by='PIGI')
@@ -171,6 +171,11 @@ combine_and_plot <- function(neighbours_data, cd_data, neighbour_types, clades_a
     left_join(cd_data, by = 'ID') %>%
     left_join(neighbour_types, by = 'Short name')
   return(combined_data)
+  # Save the combined data frame
+  write_csv(combined_data, "output/combined_df_all_neighbours_assigned.csv")
+}
+
+plot_neighbours_per_clade <- function(combined_data){
   # Extract the amount of one type of neighbour per clade 
   neighbour_count_per_clade <- combined_data %>%
     select(ID, clade, type.y) %>%
@@ -191,6 +196,7 @@ combine_and_plot <- function(neighbours_data, cd_data, neighbour_types, clades_a
     count(clade, .drop=FALSE)%>%
     mutate_if(is.factor,as.character)%>%
     replace_na(list(clade = "unknown_clade"))
+  
   
   # Create facet label names for clade variable
   clade_labels <- paste(c(LETTERS[1:6], 'unkown clade'), ", n=", representatives_per_clade$n, sep="")
