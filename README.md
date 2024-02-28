@@ -30,3 +30,4 @@ To run the script, simply source it in your R environment and call the main func
 
 ## Note
 Please ensure that all the necessary data files are in the correct directories as specified in the script. Also, make sure that the necessary libraries are installed in your R environment.
+# protein-per-organism
