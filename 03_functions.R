@@ -132,7 +132,7 @@ plot.neighbours <- function(all.neighbours.df, protein.id){
   assembly <- all.neighbours.df$assembly[all.neighbours.df$PIGI == protein.id][1]
   
   # Read gff data
-  df <- read.gff(paste('ncbi_dataset/data/', assembly,'/genomic.gff', sep = ""), na.strings = c(".", "?"), GFF3 = TRUE)
+  df <- read.gff(paste('data/ncbi_dataset/data/', assembly,'/genomic.gff', sep = ""), na.strings = c(".", "?"), GFF3 = TRUE)
   
   # Get Protein ID and Name separately
   df <- df %>%
@@ -158,7 +158,9 @@ plot.neighbours <- function(all.neighbours.df, protein.id){
     geom_gene_arrow() +
     facet_wrap(~ molecule, scales = "free", ncol = 1) +
     theme_genes()
-  ggsave(paste('neighbours_', protein.id, '.png', sep = ""), plot = last_plot(), device = "png", path = "output")
+  ggsave(paste('neighbours_', protein.id, '.png', sep = ""), 
+         plot = last_plot(), device = "png", path = "output", 
+         width = 20, height = 5, units = "cm")
 } 
 
 
@@ -210,6 +212,7 @@ plot_neighbours_per_clade <- function(combined_data){
           axis.text.x=element_blank(),
           axis.ticks.x=element_blank()) +
     geom_text(aes(label=n), vjust=-0.2, colour = 'black', size = 2) + scale_fill_discrete(name = "Neighbour Proteins")
-  ggsave("output/amount_of_neighbour_per_clade.png")
+  ggsave("output/amount_of_neighbour_per_clade.png", 
+         width = 25, height = 15, units = "cm")
 }
 
