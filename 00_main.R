@@ -9,6 +9,7 @@ library(ape)
 library(dplyr)
 library(gggenes)
 library(ggplot2)
+library(RColorBrewer)
 
 # Sourcing the scripts ####
 source('01_open.R')
@@ -55,7 +56,9 @@ main <- function(){
   combined_df <- combine_and_plot(all.neighbours, cluster_domains, annotated_neighbours, clades)
 
   # Plot data
-  plot_neighbours_per_clade(combined_df)
+  plot_neighbours_per_clade2(combined_df) #more pretty plot without unkown clades and unkown neighbours
+  
+  plot_neighbours_per_clade(combined_df) #plot with unkown clades and unkown neighbours
 }
 
 main()

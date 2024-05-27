@@ -208,11 +208,80 @@ plot_neighbours_per_clade <- function(combined_data){
   ggplot(neighbour_count_per_clade, aes(x= reorder(type.y, -n), y= n, fill=reorder(type.y, -n))) + 
     geom_bar(stat = 'identity') + 
     facet_wrap(~ clade, labeller = labeller(clade = clade_labels)) +
+    ylab("Amount of neighbouring proteins") +
     theme(axis.title.x=element_blank(),
           axis.text.x=element_blank(),
           axis.ticks.x=element_blank()) +
     geom_text(aes(label=n), vjust=-0.2, colour = 'black', size = 2) + scale_fill_discrete(name = "Neighbour Proteins")
-  ggsave("output/amount_of_neighbour_per_clade.png", 
-         width = 25, height = 15, units = "cm")
+  
+  # Generate color vector
+  n <- 20
+  qual_col_pals <- brewer.pal.info[brewer.pal.info$category == 'qual',]
+  col_vector <- unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_col_pals)))
+  
+  # Define color vector and print png
+  withr::with_options(
+    list(ggplot2.discrete.fill = col_vector),
+    ggsave("output/amount_of_neighbour_per_clade.png",
+           width = 25, height = 15, units = "cm"))
+  
+}
+
+plot_neighbours_per_clade2 <- function(combined_data){
+  # Extract the amount of one type of neighbour per clade 
+  neighbour_count_per_clade <- combined_data %>%
+    select(ID, clade, type.y) %>%
+    distinct() %>%
+    count(clade, type.y, .drop=FALSE)%>%
+    replace_na(list(clade = "unknown_clade", type.y = "unknown"))
+  
+  # Extract how many representatives from each clade were involved
+  representatives_per_clade <- combined_data %>%
+    select(ID, clade, type.y, PIGI) %>%
+    distinct(PIGI, clade) %>%
+    count(clade, .drop=FALSE)
+  
+  # Extract how many neighbours from each clade were found
+  neighbours_per_clade <- combined_data %>%
+    select(ID, clade, type.y, PIGI) %>%
+    distinct(type.y, clade)  %>%
+    count(clade, .drop=FALSE)%>%
+    mutate_if(is.factor,as.character)%>%
+    replace_na(list(clade = "unknown_clade"))
+  
+  
+  # Create facet label names for clade variable
+  clade_labels <- paste(c(LETTERS[1:6], 'unkown clade'), ", n=", representatives_per_clade$n, sep="")
+  names(clade_labels) <- c(LETTERS[1:6], 'unknown_clade')
+  
+  
+  
+  # Plot the amount of neighbour of one sort per clade without unknown clade
+  neighbour_count_per_clade_no_unkown <- neighbour_count_per_clade %>%
+    filter(clade != 'unknown_clade') %>%
+    filter(type.y != 'unknown')
+  
+  
+  # Plot the amount of neighbour of one sort per clade
+  ggplot(neighbour_count_per_clade_no_unkown, aes(x= reorder(type.y, -n), y= n, fill=reorder(type.y, -n))) +
+    geom_bar(stat = 'identity') +
+    facet_wrap(~ clade, labeller = labeller(clade = clade_labels)) +
+    theme(axis.title.x=element_blank(),
+          axis.text.x=element_blank(),
+          axis.ticks.x=element_blank()) +
+    ylab("Amount of neighbouring proteins") +
+    geom_text(aes(label=n), vjust=-0.2, colour = 'black', size = 2) +
+    guides(fill=guide_legend(title="Neighbour Proteins"))
+  
+  # Generate color vector
+  n <- 20
+  qual_col_pals <- brewer.pal.info[brewer.pal.info$category == 'qual',]
+  col_vector <- unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_col_pals)))
+  
+  # Define color vector and print png
+  withr::with_options(
+    list(ggplot2.discrete.fill = col_vector),
+    ggsave("output/amount_of_neighbour_per_cladenounknown.png",
+           width = 25, height = 15, units = "cm"))
 }
 
