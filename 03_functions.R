@@ -1,3 +1,6 @@
+#rounding function
+round_any <- function(x, accuracy, f=round){f(x/ accuracy) * accuracy}
+
 # Function to extract column from attribute column
 getAttributeField <- function (x, field, attrsep = ";") {
   # Split the attributes
@@ -183,7 +186,8 @@ plot_neighbours_per_clade <- function(combined_data){
     select(ID, clade, type.y) %>%
     distinct() %>%
     count(clade, type.y, .drop=FALSE)%>%
-    replace_na(list(clade = "unknown_clade", type.y = "unknown"))
+    replace_na(list(clade = "unknown_clade", type.y = "unknown")) %>%
+    mutate(y.type = as.factor(type.y))
   
   # Extract how many representatives from each clade were involved
   representatives_per_clade <- combined_data %>%
@@ -204,16 +208,50 @@ plot_neighbours_per_clade <- function(combined_data){
   clade_labels <- paste(c(LETTERS[1:6], 'unkown clade'), ", n=", representatives_per_clade$n, sep="")
   names(clade_labels) <- c(LETTERS[1:6], 'unknown_clade')
   
-  # Plot the amount of neighbour of one sort per clade
-  ggplot(neighbour_count_per_clade, aes(x= reorder(type.y, -n), y= n, fill=reorder(type.y, -n))) + 
-    geom_bar(stat = 'identity') + 
-    facet_wrap(~ clade, labeller = labeller(clade = clade_labels)) +
-    ylab("Amount of neighbouring proteins") +
-    theme(axis.title.x=element_blank(),
-          axis.text.x=element_blank(),
-          axis.ticks.x=element_blank()) +
-    geom_text(aes(label=n), vjust=-0.2, colour = 'black', size = 2) + scale_fill_discrete(name = "Neighbour Proteins")
   
+  plot_height <- round_any(max(neighbour_count_per_clade$n), 100, f = ceiling)
+  # Plot the amount of neighbour of one sort per clade
+  ggplot(neighbour_count_per_clade, aes(x= type.y, y= n, fill=type.y)) + 
+    # Add bars with identity statistic, position them side by side (dodge), and outline in black
+    geom_bar(stat = "identity", position = "dodge", color = "black", width = 1) +
+    
+    # Create facets based on the second variable, with free y scales and labels on both sides
+    facet_grid(~clade, scales = "free_y", labeller = labeller(clade = clade_labels)) +
+    
+    
+    # Use a minimal theme with base font size 12, and place the legend at the top
+    theme_bw(base_size = 12) +
+    
+    # Remove panel grid, x axis title, x axis text, and x axis ticks
+    # Customize y axis ticks and line, and remove strip background
+    # Adjust spacing between panels
+    theme(panel.grid = element_blank(),
+          axis.title.x=element_blank(),
+          axis.text.x=element_blank(),
+          axis.ticks.x = element_blank(),
+          axis.ticks.y = element_line(colour = "black", size = 0.5, linetype = "solid"),
+          axis.ticks.length=unit(.2, "cm"),
+          axis.line.y = element_line(colour = "black", size = 0.5, linetype = "solid"),
+          strip.background =element_blank(),
+          panel.spacing.x= unit(-0.1, "cm")) +
+    
+    # Set y axis breaks, limits, and expansion
+    scale_y_continuous(breaks = seq(0, plot_height, plot_height/5), 
+                       limits = c(0,plot_height), 
+                       expand = c(0,0)) +
+    
+    # Set x axis expansion to create space between axis and bars
+    scale_x_discrete(expand=c(0,1)) +
+    
+    # Set y axis label and fill legend title
+    labs(y = "Count per clade", fill = "Types of Neighbours") +
+    
+    # control relation to data an y axis basically you zoom in but this could be handy if you data is barely above the highest tick point, but still want to inclucde it to the plot? like in base r bar plot
+    coord_cartesian(ylim = c(0, plot_height),
+                    clip = 'off') +
+    
+    #generate text above the bars with the amount of neighbours
+    geom_text(aes(label=n), hjust=-0.2, colour = 'black', size = 2, angle = 90) 
   # Generate color vector
   n <- 20
   qual_col_pals <- brewer.pal.info[brewer.pal.info$category == 'qual',]
@@ -223,8 +261,13 @@ plot_neighbours_per_clade <- function(combined_data){
   withr::with_options(
     list(ggplot2.discrete.fill = col_vector),
     ggsave("output/amount_of_neighbour_per_clade.png",
-           width = 25, height = 15, units = "cm"))
+           width = 30, height = 15, units = "cm")) 
   
+  # Define color vector and print svg
+  withr::with_options(
+    list(ggplot2.discrete.fill = col_vector),
+    ggsave("output/amount_of_neighbour_per_clade.svg",
+           width = 30, height = 15, units = "cm"))
 }
 
 plot_neighbours_per_clade2 <- function(combined_data){
@@ -233,7 +276,8 @@ plot_neighbours_per_clade2 <- function(combined_data){
     select(ID, clade, type.y) %>%
     distinct() %>%
     count(clade, type.y, .drop=FALSE)%>%
-    replace_na(list(clade = "unknown_clade", type.y = "unknown"))
+    replace_na(list(clade = "unknown_clade", type.y = "unknown"))%>%
+    mutate(y.type = as.factor(type.y))
   
   # Extract how many representatives from each clade were involved
   representatives_per_clade <- combined_data %>%
@@ -251,7 +295,7 @@ plot_neighbours_per_clade2 <- function(combined_data){
   
   
   # Create facet label names for clade variable
-  clade_labels <- paste(c(LETTERS[1:6], 'unkown clade'), ", n=", representatives_per_clade$n, sep="")
+  clade_labels <- paste(c(LETTERS[1:6], 'unkown clade'), ", n = ", representatives_per_clade$n, sep="")
   names(clade_labels) <- c(LETTERS[1:6], 'unknown_clade')
   
   
@@ -261,18 +305,52 @@ plot_neighbours_per_clade2 <- function(combined_data){
     filter(clade != 'unknown_clade') %>%
     filter(type.y != 'unknown')
   
+  plot_height <- round_any(max(neighbour_count_per_clade_no_unkown$n), 100, f = ceiling)
   
   # Plot the amount of neighbour of one sort per clade
-  ggplot(neighbour_count_per_clade_no_unkown, aes(x= reorder(type.y, -n), y= n, fill=reorder(type.y, -n))) +
-    geom_bar(stat = 'identity') +
-    facet_wrap(~ clade, labeller = labeller(clade = clade_labels)) +
-    theme(axis.title.x=element_blank(),
+  ggplot(neighbour_count_per_clade_no_unkown, aes(x= type.y, y= n, fill=type.y)) +
+    # Add bars with identity statistic, position them side by side (dodge), and outline in black
+    geom_bar(stat = "identity", position = "dodge", color = "black", width = 1) +
+    
+    # Create facets based on the second variable, with free y scales and labels on both sides
+    facet_grid(~clade, scales = "free_y", labeller = labeller(clade = clade_labels)) +
+    
+    # Use a Brewer color palette for the fill aesthetic
+   # scale_fill_brewer(palette = "Pastel2") +
+    
+    # Use a minimal theme with base font size 12, and place the legend at the top
+    theme_bw(base_size = 12) +
+    
+    # Remove panel grid, x axis title, x axis text, and x axis ticks
+    # Customize y axis ticks and line, and remove strip background
+    # Adjust spacing between panels
+    theme(panel.grid = element_blank(),
+          axis.title.x=element_blank(),
           axis.text.x=element_blank(),
-          axis.ticks.x=element_blank()) +
-    ylab("Amount of neighbouring proteins") +
-    geom_text(aes(label=n), vjust=-0.2, colour = 'black', size = 2) +
-    guides(fill=guide_legend(title="Neighbour Proteins"))
-  
+          axis.ticks.x = element_blank(),
+          axis.ticks.y = element_line(colour = "black", size = 0.5, linetype = "solid"),
+          axis.ticks.length=unit(.2, "cm"),
+          axis.line.y = element_line(colour = "black", size = 0.5, linetype = "solid"),
+          strip.background =element_blank(),
+          panel.spacing.x= unit(-0.1, "cm")) +
+    
+    # Set y axis breaks, limits, and expansion
+    scale_y_continuous(breaks = seq(0, plot_height, plot_height/5), 
+                       limits = c(0,plot_height), 
+                       expand = c(0,0)) +
+    
+    # Set x axis expansion to create space between axis and bars
+    scale_x_discrete(expand=c(0,1)) +
+    
+    # Set y axis label and fill legend title
+    labs(y = "Count per clade", fill = "Types of Neighbours") +
+    
+    # control relation to data an y axis basically you zoom in but this could be handy if you data is barely above the highest tick point, but still want to inclucde it to the plot? like in base r bar plot
+    coord_cartesian(ylim = c(0, plot_height),
+                    clip = 'off') +
+    
+    #generate text above the bars with the amount of neighbours
+    geom_text(aes(label=n), hjust=-0.2, colour = 'black', size = 2, angle = 90) 
   # Generate color vector
   n <- 20
   qual_col_pals <- brewer.pal.info[brewer.pal.info$category == 'qual',]
@@ -282,6 +360,12 @@ plot_neighbours_per_clade2 <- function(combined_data){
   withr::with_options(
     list(ggplot2.discrete.fill = col_vector),
     ggsave("output/amount_of_neighbour_per_cladenounknown.png",
-           width = 25, height = 15, units = "cm"))
+           width = 30, height = 15, units = "cm"))
+  
+  # Define color vector and print svg
+  withr::with_options(
+    list(ggplot2.discrete.fill = col_vector),
+    ggsave("output/amount_of_neighbour_per_cladenounknown.svg",
+         width = 30, height = 15, units = "cm"))
 }
 
