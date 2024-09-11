@@ -1,7 +1,19 @@
-#rounding function
+#' Rounding function
+#'
+#' @param x The number to be rounded.
+#' @param accuracy The accuracy to which the number should be rounded.
+#' @param f The rounding function to use (default is round).
+#' @return The rounded number.
+#' @export
 round_any <- function(x, accuracy, f=round){f(x/ accuracy) * accuracy}
 
-# Function to extract column from attribute column
+#' Extract a specific field from the attribute column of a GFF file
+#'
+#' @param x The attribute column as a character vector.
+#' @param field The field to extract.
+#' @param attrsep The separator used in the attribute column (default is ";").
+#' @return A character vector with the extracted field values.
+#' @export
 getAttributeField <- function (x, field, attrsep = ";") {
   # Split the attributes
   s = strsplit(x, split = attrsep, fixed = TRUE)
@@ -20,7 +32,14 @@ getAttributeField <- function (x, field, attrsep = ";") {
   })
 }
 
-# Define a function to find the protein alias
+#' Find the protein alias
+#'
+#' @param protein.id The protein ID to search for.
+#' @param alias The alias database (default is PROTEIN_ALIAS).
+#' @param verbose Whether to print additional information (default is FALSE).
+#' @param identi Whether to include identity information (default is FALSE).
+#' @return A data frame with the corresponding PIGI and alias.
+#' @export
 protein.alias <- function(protein.id, alias = PROTEIN_ALIAS, verbose = FALSE, identi = FALSE){
   # Check if the protein ID is in the alias database
   if(length(alias$alias == protein.id) > 0){
@@ -55,7 +74,14 @@ protein.alias <- function(protein.id, alias = PROTEIN_ALIAS, verbose = FALSE, id
   }
 }
 
-# Function to get neighboring proteins
+#' Get neighboring proteins
+#'
+#' @param gff.df The GFF data frame.
+#' @param protein.id The protein ID to search for neighbors.
+#' @param bp Number of base pairs to consider for neighbors (default is 300).
+#' @param n Number of neighbors to find (default is 15).
+#' @return A data frame with neighboring proteins.
+#' @export
 getNeighborProteins <- function(gff.df, protein.id, bp = 300, n = 15){
   # Initialize empty data frame for neighbors
   neighbors <- data.frame()
@@ -93,7 +119,14 @@ getNeighborProteins <- function(gff.df, protein.id, bp = 300, n = 15){
   return(neighbors)
 }
 
-# Combined function, requires ape
+#' Get protein neighbors from a GFF3 file
+#'
+#' @param input The path to the GFF3 file.
+#' @param protein.id The protein ID to search for neighbors.
+#' @param basepairs Number of base pairs to consider for neighbors (default is 300).
+#' @param m Number of neighbors to find (default is 15).
+#' @return A data frame with neighboring proteins.
+#' @export
 getProteinNeighborsFromGff3 <- function(input, protein.id, basepairs = 300, m = 15){
   # Import gff3 file
   gffData <- read.gff(input, na.strings = c(".", "?"), GFF3 = TRUE)
@@ -109,12 +142,19 @@ getProteinNeighborsFromGff3 <- function(input, protein.id, basepairs = 300, m = 
   return(finalOutput)
 }
 
-# Loop through each protein
-collec.all.neigbour <- function(protein.assembly, basepairs = 300, m = 15){
+#' Collect all neighbors for a list of proteins
+#'
+#' @param protein.assembly A data frame with protein and assembly information.
+#' @param basepairs Number of base pairs to consider for neighbors (default is 300).
+#' @param m Number of neighbors to find (default is 15).
+#' @param PATH Path where to ncbi_dataset folder is stored (default = data).
+#' @return A data frame with all neighbors.
+#' @export
+collec.all.neigbour <- function(protein.assembly, basepairs = 300, m = 15, PATH = 'data'){
   all.neighbours <- data.frame() # Initialize empty data frame for all neighbors
   for(i in seq_len(nrow(protein.assembly))){
     # Get neighbors for each protein
-    np <- getProteinNeighborsFromGff3(paste('data/ncbi_dataset/data/', protein.assembly[i,1],'/genomic.gff', sep = ""), 
+    np <- getProteinNeighborsFromGff3(paste(PATH,'/ncbi_dataset/data/', protein.assembly[i,1],'/genomic.gff', sep = ""), 
                                       protein.assembly[i,2], basepairs, m)
     if(nrow(np) > 0){
       # Add protein and assembly information to neighbors data frame
@@ -124,12 +164,23 @@ collec.all.neigbour <- function(protein.assembly, basepairs = 300, m = 15){
       
       # Add neighbors to all neighbors data frame
       all.neighbours <- rbind(all.neighbours, np)}
-    # save resluts of this long run
-    write_csv(all.neighbours, paste('output/all_neighbours_bp',basepairs, '_n', m,'.csv', sep = ""))
-  }
+    }
+
+  # Get the current date in YYYY-MM-DD format
+  current_date <- format(Sys.Date(), "%Y-%m-%d")
+  # Save results of this long run
+  output_file <- file.path('output',current_date, paste('all_neighbours_bp', basepairs, '_n', max_neighbors, '.csv', sep = ""))
+  write_csv(all_neighbors, output_file)
+  
+  return(all_neighbors)
+
 }
 
-# Function to plot neighbors
+#' Plot neighbors
+#'
+#' @param all.neighbours.df A data frame with all neighbors.
+#' @param protein.id The protein ID to plot.
+#' @export
 plot.neighbours <- function(all.neighbours.df, protein.id){
   # Get assembly for given protein id
   assembly <- all.neighbours.df$assembly[all.neighbours.df$PIGI == protein.id][1]
@@ -166,7 +217,14 @@ plot.neighbours <- function(all.neighbours.df, protein.id){
          width = 20, height = 5, units = "cm")
 } 
 
-
+#' Combine and plot neighbors
+#'
+#' @param neighbours_data A data frame with neighbors data.
+#' @param cd_data A data frame with "conserved domain" data.
+#' @param neighbour_types A data frame with neighbor types.
+#' @param clade_assign A data frame with clade assignments.
+#' @return A combined data frame.
+#' @export
 combine_and_plot <- function(neighbours_data, cd_data, neighbour_types, clade_assign){
   # Merge the fasta and the clade assignment
   neighbours_with_clades <- neighbours_data %>%
@@ -180,6 +238,10 @@ combine_and_plot <- function(neighbours_data, cd_data, neighbour_types, clade_as
   write_csv(combined_data, "output/combined_df_all_neighbours_assigned.csv")
 }
 
+#' Plot neighbors per clade
+#'
+#' @param combined_data A combined data frame with neighbors and clade information.
+#' @export
 plot_neighbours_per_clade <- function(combined_data){
   # Extract the amount of one type of neighbour per clade 
   neighbour_count_per_clade <- combined_data %>%
@@ -270,6 +332,10 @@ plot_neighbours_per_clade <- function(combined_data){
            width = 30, height = 15, units = "cm"))
 }
 
+#' Plot neighbors per clade without unknown clade
+#'
+#' @param combined_data A combined data frame with neighbors and clade information.
+#' @export
 plot_neighbours_per_clade2 <- function(combined_data){
   # Extract the amount of one type of neighbour per clade 
   neighbour_count_per_clade <- combined_data %>%
@@ -369,3 +435,32 @@ plot_neighbours_per_clade2 <- function(combined_data){
          width = 30, height = 15, units = "cm"))
 }
 
+
+#' Get Output File Path Based on Date
+#'
+#' This function asks the user for a date, gets the current date, and determines the output file path based on the provided date or the current date.
+#' If no date is supplied, a folder structure for the curent date is created.
+#' 
+#' @param basepairs Number of base pairs to consider for neighbors.
+#' @param max_neighbors Number of neighbors to find.
+#' @return The output file path.
+#' @export
+get_output_file_path <- function(basepairs, max_neighbors) {
+  # Ask user if they want to reload the data from an older date that they specify
+  date <- readline(prompt = "Enter the date of the data you want to load (YYYY-MM-DD): ")
+  
+  # Get the current date in YYYY-MM-DD format
+  current_date <- format(Sys.Date(), "%Y-%m-%d")
+  
+  # Determine the output file path based on the provided date or current date
+  if (date != "") {
+    output_file <- file.path('output', date, paste('all_neighbours_bp', basepairs, '_n', max_neighbors, '.csv', sep = ""))
+  } else {
+    if (!dir.exists(file.path('output', current_date))) {
+    dir.create(file.path('output', current_date), recursive = TRUE)
+      }
+    output_file <- file.path('output', current_date, paste('all_neighbours_bp', basepairs, '_n', max_neighbors, '.csv', sep = ""))
+  }
+  
+  return(output_file)
+}

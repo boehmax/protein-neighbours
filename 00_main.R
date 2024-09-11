@@ -17,34 +17,44 @@ source('02_clean.R')
 source('03_functions.R')
 
 # Loading the Data ####
-main <- function(){
+main <- function(BASEPAIRS = 300, MAX_NEIGHBORS = 15, PATH = 'data'){
   # Read protein and assembly data
-  BASEPAIRS <- 300
-  MAX_NEIGHBORS <- 15
-  
+  protein_assembly_data <- read_protein_assembly_data(PATH = PATH)
+
+  # Access the variables
+  protein_of_interest <- protein_assembly_data$protein_of_interest
+  protein <- protein_assembly_data$protein
+  assembly <- protein_assembly_data$assembly
+  protein_assembly <- protein_assembly_data$protein_assembly
+
   # Generate protein alias data from files in representative folder
-  PROTEIN_ALIAS <- read_represatatives() 
+  PROTEIN_ALIAS <- read_representatives(PATH = PATH) 
   
-  #check if results are already present and if not generate them, it will take a long while if the results need to be generated 
-  if(file.exists(paste('output/all_neighbours_bp',BASEPAIRS, '_n', MAX_NEIGHBORS,'.csv', sep = ""))){
-    all.neighbours <- read_csv(paste('output/all_neighbours_bp',BASEPAIRS, '_n', MAX_NEIGHBORS,'.csv', sep = ""))
-  }else{
-    # Get neighboring proteins
-    all.neighbours <- collec.all.neigbour(protein.assembly, BASEPAIRS, MAX_NEIGHBORS)
+  # Get the output file path
+  output_file<- get_output_file_path(basepairs=BASEPAIRS, max_neighbors=MAX_NEIGHBORS)
+  
+  # Check if the output file exists and if its already present read it
+  if (file.exists(output_file)) {
+    all.neighbours <- read_csv(output_file)
+  } else {
+   # Get neighboring proteins
+    all.neighbours <- collec_all_neigbour(protein.assembly, BASEPAIRS, MAX_NEIGHBORS, PATH)
+   # Save the results
+    write_csv(all_neighbours, output_file)
   }
-  
-  # Plot the neighbors
-  if(protein_of_interest==""|is.null(protein_of_interest)|protein_of_interest %in% PROTEIN_ALIAS$alias){
-    print('No valid protein of interest giving, skipping plotting')
-  }else{
-    plot.neighbours(all.neighbours, protein_of_interest)
+
+  # Plot the neighbors if a valid protein of interest is provided
+  if (is.null(protein_of_interest) || protein_of_interest == "" || !(protein_of_interest %in% PROTEIN_ALIAS$alias)) {
+    print('No valid protein of interest given, skipping plotting.')
+  } else {
+    plot_neighbours(all.neighbours, protein_of_interest)
   }
   
   # Geting Clade information from text files
-  clades <- read_clades()
+  clades <- read_clades(PATH = PATH)
   
   # Getting Cluster Domain information from text files
-  cluster_domains <- read_cluster_domain()
+  cluster_domains <- read_cluster_domain(PATH = PATH)
   
   # Get the types of neighbours and their counts
   amount_of_neighbours(cluster_domains)
@@ -57,7 +67,6 @@ main <- function(){
 
   # Plot data
   plot_neighbours_per_clade2(combined_df) #more pretty plot without unkown clades and unkown neighbours
-  
   plot_neighbours_per_clade(combined_df) #plot with unkown clades and unkown neighbours
 }
 
