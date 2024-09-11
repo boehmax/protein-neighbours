@@ -106,7 +106,7 @@ amount_of_neighbours <- function(cd_assign){
          aes(x = reorder(`Short name`, -n), y = n)) +
     geom_bar(stat = "identity")
   ggsave(file.path('output',current_date,'types_of_neighbours.png'))
-  write_csv(types_of_neighbours, file.path('output',current_date,'types_of_neighbours.csv')
+  write_csv(types_of_neighbours, file.path('output',current_date,'types_of_neighbours.csv'))
   print('Please open the output folder to see the types of neighbours and annotated them as per the instructions in the README.md file')
 }
 
@@ -122,7 +122,7 @@ amount_of_neighbours <- function(cd_assign){
 #' @param cluster_file The name of the cluster alias file (default is 'cluster_representative.txt').
 #' @return A data frame with combined alias data.
 #' @export
-read_representatives <- function(PATH = 'data'
+read_representatives <- function(PATH = 'data',
                  path = 'representatives', 
                  ipg_file = 'ipg_representative.txt', 
                  pdb_file = 'pdb_representative.txt', 

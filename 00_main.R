@@ -12,9 +12,9 @@ library(ggplot2)
 library(RColorBrewer)
 
 # Sourcing the scripts ####
-source('01_open.R')
-source('02_clean.R')
-source('03_functions.R')
+source('R/01_open.R')
+source('R/02_clean.R')
+source('R/03_functions.R')
 
 # Loading the Data ####
 main <- function(BASEPAIRS = 300, MAX_NEIGHBORS = 15, PATH = 'data'){
