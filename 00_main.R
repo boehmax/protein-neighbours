@@ -14,7 +14,7 @@ library(RColorBrewer)
 # Sourcing the scripts ####
 source('R/01_open.R')
 source('R/02_clean.R')
-source('R/03_functions.R')
+source('R/03_function.R')
 
 # Loading the Data ####
 main <- function(BASEPAIRS = 300, MAX_NEIGHBORS = 15, PATH = 'data'){
@@ -25,7 +25,7 @@ main <- function(BASEPAIRS = 300, MAX_NEIGHBORS = 15, PATH = 'data'){
   protein_of_interest <- protein_assembly_data$protein_of_interest
   protein <- protein_assembly_data$protein
   assembly <- protein_assembly_data$assembly
-  protein_assembly <- protein_assembly_data$protein_assembly
+  protein.assembly <- protein_assembly_data$protein_assembly
 
   # Generate protein alias data from files in representative folder
   PROTEIN_ALIAS <- read_representatives(PATH = PATH) 
@@ -40,7 +40,7 @@ main <- function(BASEPAIRS = 300, MAX_NEIGHBORS = 15, PATH = 'data'){
    # Get neighboring proteins
     all.neighbours <- collec_all_neigbour(protein.assembly, BASEPAIRS, MAX_NEIGHBORS, PATH)
    # Save the results
-    write_csv(all_neighbours, output_file)
+    write_csv(all.neighbours, output_file)
   }
 
   # Plot the neighbors if a valid protein of interest is provided
@@ -60,7 +60,11 @@ main <- function(BASEPAIRS = 300, MAX_NEIGHBORS = 15, PATH = 'data'){
   amount_of_neighbours(cluster_domains)
   
   # Re-import the types of neighbours after manual annotation
-  annotated_neighbours <- read_csv("output/types_of_neighbours_annotated.csv", show_col_types = FALSE)
+  if(file.exists("output/types_of_neighbours_annotated.csv")){
+    annotated_neighbours <- read_csv("output/types_of_neighbours_annotated.csv", show_col_types = FALSE)
+  } else {
+    annotated_neighbours <- NULL
+  }
   
   # Combine and plot
   combined_df <- combine_and_plot(all.neighbours, cluster_domains, annotated_neighbours, clades)

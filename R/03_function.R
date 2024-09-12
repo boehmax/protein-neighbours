@@ -128,6 +128,15 @@ getNeighborProteins <- function(gff.df, protein.id, bp = 300, n = 15){
 #' @return A data frame with neighboring proteins.
 #' @export
 getProteinNeighborsFromGff3 <- function(input, protein.id, basepairs = 300, m = 15){
+  # Inform the user which input is being processed
+  message(paste("Processing input:", input))
+
+   # Check if the file exists
+  if (!file.exists(input)) {
+    warning(paste("File not found:", input, "- Skipping this input."))
+    return(NULL)
+  }
+
   # Import gff3 file
   gffData <- read.gff(input, na.strings = c(".", "?"), GFF3 = TRUE)
   
@@ -150,12 +159,17 @@ getProteinNeighborsFromGff3 <- function(input, protein.id, basepairs = 300, m = 
 #' @param PATH Path where to ncbi_dataset folder is stored (default = data).
 #' @return A data frame with all neighbors.
 #' @export
-collec.all.neigbour <- function(protein.assembly, basepairs = 300, m = 15, PATH = 'data'){
+collec_all_neigbour <- function(protein.assembly, basepairs = 300, max_neighbors = 15, PATH = 'data'){
   all.neighbours <- data.frame() # Initialize empty data frame for all neighbors
   for(i in seq_len(nrow(protein.assembly))){
     # Get neighbors for each protein
     np <- getProteinNeighborsFromGff3(paste(PATH,'/ncbi_dataset/data/', protein.assembly[i,1],'/genomic.gff', sep = ""), 
-                                      protein.assembly[i,2], basepairs, m)
+                                      protein.assembly[i,2], basepairs, max_neighbors)
+    # Skip the iteration if np is NULL
+    if (is.null(np)) {
+        next
+    }
+
     if(nrow(np) > 0){
       # Add protein and assembly information to neighbors data frame
       np <- np %>%
@@ -170,9 +184,9 @@ collec.all.neigbour <- function(protein.assembly, basepairs = 300, m = 15, PATH 
   current_date <- format(Sys.Date(), "%Y-%m-%d")
   # Save results of this long run
   output_file <- file.path('output',current_date, paste('all_neighbours_bp', basepairs, '_n', max_neighbors, '.csv', sep = ""))
-  write_csv(all_neighbors, output_file)
+  write_csv(all.neighbours, output_file)
   
-  return(all_neighbors)
+  return(all.neighbours)
 
 }
 
@@ -229,13 +243,26 @@ combine_and_plot <- function(neighbours_data, cd_data, neighbour_types, clade_as
   # Merge the fasta and the clade assignment
   neighbours_with_clades <- neighbours_data %>%
     left_join(clade_assign, by='PIGI')
-  # Combine all information into one dataframe
+
+  # Combine all information into one dataframe if possible
+  if (is.null(neighbour_types)) {
+    warning("No additional neighbour data found. Skipping the combination. Using porduct.")
+         if(!'Short name' %in% colnames(neighbours_with_clades)){
+            neighbours_with_clades$`Short name` <- neighbours_with_clades$product
+            neighbours_with_clades$neighbour_type <- neighbours_with_clades$product
+  }
+  
+    write_csv(neighbours_with_clades, "output/combined_df_all_neighbours_assigned.csv")
+    return(neighbours_with_clades)
+  }
   combined_data <- neighbours_with_clades %>%
     left_join(cd_data, by = 'ID') %>%
     left_join(neighbour_types, by = 'Short name')
-  return(combined_data)
+    mutate(neighbour_type = type.y)
+  
   # Save the combined data frame
   write_csv(combined_data, "output/combined_df_all_neighbours_assigned.csv")
+  return(combined_data)
 }
 
 #' Plot neighbors per clade
@@ -245,26 +272,27 @@ combine_and_plot <- function(neighbours_data, cd_data, neighbour_types, clade_as
 plot_neighbours_per_clade <- function(combined_data){
   # Extract the amount of one type of neighbour per clade 
   neighbour_count_per_clade <- combined_data %>%
-    select(ID, clade, type.y) %>%
+    select(ID, clade, neighbour_type) %>%
     distinct() %>%
-    count(clade, type.y, .drop=FALSE)%>%
-    replace_na(list(clade = "unknown_clade", type.y = "unknown")) %>%
-    mutate(y.type = as.factor(type.y))
+    count(clade, neighbour_type, .drop = FALSE) %>%
+    replace_na(list(clade = "unknown_clade", neighbour_type = "unknown")) %>%
+    mutate(neighbour_type = as.factor(neighbour_type))
   
   # Extract how many representatives from each clade were involved
   representatives_per_clade <- combined_data %>%
-    select(ID, clade, type.y, PIGI) %>%
+    select(ID, clade, neighbour_type, PIGI) %>%
+    replace_na(list(clade = "unknown_clade")) %>%
     distinct(PIGI, clade) %>%
-    count(clade, .drop=FALSE)
+    count(clade, .drop = FALSE) %>%
+    mutate(clade = as.factor(clade))
   
   # Extract how many neighbours from each clade were found
   neighbours_per_clade <- combined_data %>%
-    select(ID, clade, type.y, PIGI) %>%
-    distinct(type.y, clade)  %>%
-    count(clade, .drop=FALSE)%>%
-    mutate_if(is.factor,as.character)%>%
+    select(ID, clade, neighbour_type, PIGI) %>%
+    distinct(neighbour_type, clade) %>%
+    count(clade, .drop = FALSE) %>%
+    mutate(across(where(is.factor), as.character)) %>%
     replace_na(list(clade = "unknown_clade"))
-  
   
   # Create facet label names for clade variable
   clade_labels <- paste(c(LETTERS[1:6], 'unkown clade'), ", n=", representatives_per_clade$n, sep="")
@@ -272,8 +300,15 @@ plot_neighbours_per_clade <- function(combined_data){
   
   
   plot_height <- round_any(max(neighbour_count_per_clade$n), 100, f = ceiling)
+  
+  # Ensure plot_height is a finite number
+  if (!is.finite(plot_height) || plot_height <= 0) {
+    warning("Calculated plot height is not a finite positive number. Using ggplot2 default.")
+    plot_height <- NULL
+  }
+
   # Plot the amount of neighbour of one sort per clade
-  ggplot(neighbour_count_per_clade, aes(x= type.y, y= n, fill=type.y)) + 
+  p <- ggplot(neighbour_count_per_clade, aes(x= neighbour_type, y= n, fill=neighbour_type)) + 
     # Add bars with identity statistic, position them side by side (dodge), and outline in black
     geom_bar(stat = "identity", position = "dodge", color = "black", width = 1) +
     
@@ -297,10 +332,6 @@ plot_neighbours_per_clade <- function(combined_data){
           strip.background =element_blank(),
           panel.spacing.x= unit(-0.1, "cm")) +
     
-    # Set y axis breaks, limits, and expansion
-    scale_y_continuous(breaks = seq(0, plot_height, plot_height/5), 
-                       limits = c(0,plot_height), 
-                       expand = c(0,0)) +
     
     # Set x axis expansion to create space between axis and bars
     scale_x_discrete(expand=c(0,1)) +
@@ -314,6 +345,15 @@ plot_neighbours_per_clade <- function(combined_data){
     
     #generate text above the bars with the amount of neighbours
     geom_text(aes(label=n), hjust=-0.2, colour = 'black', size = 2, angle = 90) 
+  # Set y axis breaks, limits, and expansion
+  if (!is.null(plot_height)) {
+    p <- p + scale_y_continuous(breaks = seq(0, plot_height, plot_height/5), 
+                       limits = c(0,plot_height), 
+                       expand = c(0,0)) 
+  }
+  # Print the plot
+  print(p)
+
   # Generate color vector
   n <- 20
   qual_col_pals <- brewer.pal.info[brewer.pal.info$category == 'qual',]
@@ -339,24 +379,26 @@ plot_neighbours_per_clade <- function(combined_data){
 plot_neighbours_per_clade2 <- function(combined_data){
   # Extract the amount of one type of neighbour per clade 
   neighbour_count_per_clade <- combined_data %>%
-    select(ID, clade, type.y) %>%
+    select(ID, clade, neighbour_type) %>%
     distinct() %>%
-    count(clade, type.y, .drop=FALSE)%>%
-    replace_na(list(clade = "unknown_clade", type.y = "unknown"))%>%
-    mutate(y.type = as.factor(type.y))
+    count(clade, neighbour_type, .drop = FALSE) %>%
+    replace_na(list(clade = "unknown_clade", neighbour_type = "unknown")) %>%
+    mutate(neighbour_type = as.factor(neighbour_type))
   
   # Extract how many representatives from each clade were involved
   representatives_per_clade <- combined_data %>%
-    select(ID, clade, type.y, PIGI) %>%
+    select(ID, clade, neighbour_type, PIGI) %>%
+    replace_na(list(clade = "unknown_clade")) %>%
     distinct(PIGI, clade) %>%
-    count(clade, .drop=FALSE)
+    count(clade, .drop = FALSE) %>%
+    mutate(clade = as.factor(clade))
   
   # Extract how many neighbours from each clade were found
   neighbours_per_clade <- combined_data %>%
-    select(ID, clade, type.y, PIGI) %>%
-    distinct(type.y, clade)  %>%
-    count(clade, .drop=FALSE)%>%
-    mutate_if(is.factor,as.character)%>%
+    select(ID, clade, neighbour_type, PIGI) %>%
+    distinct(neighbour_type, clade) %>%
+    count(clade, .drop = FALSE) %>%
+    mutate(across(where(is.factor), as.character)) %>%
     replace_na(list(clade = "unknown_clade"))
   
   
@@ -369,12 +411,17 @@ plot_neighbours_per_clade2 <- function(combined_data){
   # Plot the amount of neighbour of one sort per clade without unknown clade
   neighbour_count_per_clade_no_unkown <- neighbour_count_per_clade %>%
     filter(clade != 'unknown_clade') %>%
-    filter(type.y != 'unknown')
+    filter(neighbour_type != 'unknown')
   
-  plot_height <- round_any(max(neighbour_count_per_clade_no_unkown$n), 100, f = ceiling)
+  plot_height <- round_any(max(neighbour_count_per_clade$n), 100, f = ceiling)
   
+  # Ensure plot_height is a finite number
+  if (!is.finite(plot_height) || plot_height <= 0) {
+    warning("Calculated plot height is not a finite positive number. Using ggplot2 default.")
+    plot_height <- NULL
+  }
   # Plot the amount of neighbour of one sort per clade
-  ggplot(neighbour_count_per_clade_no_unkown, aes(x= type.y, y= n, fill=type.y)) +
+  p<-ggplot(neighbour_count_per_clade_no_unkown, aes(x= neighbour_type, y= n, fill=neighbour_type)) +
     # Add bars with identity statistic, position them side by side (dodge), and outline in black
     geom_bar(stat = "identity", position = "dodge", color = "black", width = 1) +
     
@@ -400,11 +447,6 @@ plot_neighbours_per_clade2 <- function(combined_data){
           strip.background =element_blank(),
           panel.spacing.x= unit(-0.1, "cm")) +
     
-    # Set y axis breaks, limits, and expansion
-    scale_y_continuous(breaks = seq(0, plot_height, plot_height/5), 
-                       limits = c(0,plot_height), 
-                       expand = c(0,0)) +
-    
     # Set x axis expansion to create space between axis and bars
     scale_x_discrete(expand=c(0,1)) +
     
@@ -417,6 +459,15 @@ plot_neighbours_per_clade2 <- function(combined_data){
     
     #generate text above the bars with the amount of neighbours
     geom_text(aes(label=n), hjust=-0.2, colour = 'black', size = 2, angle = 90) 
+    # Set y axis breaks, limits, and expansion
+  if (!is.null(plot_height)) {
+    p <- p + scale_y_continuous(breaks = seq(0, plot_height, plot_height/5), 
+                       limits = c(0,plot_height), 
+                       expand = c(0,0)) 
+  }
+  # Print the plot
+  print(p)
+  
   # Generate color vector
   n <- 20
   qual_col_pals <- brewer.pal.info[brewer.pal.info$category == 'qual',]
