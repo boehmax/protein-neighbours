@@ -17,7 +17,11 @@ source('R/02_clean.R')
 source('R/03_function.R')
 
 # Loading the Data ####
-main <- function(BASEPAIRS = 300, MAX_NEIGHBORS = 15, PATH = 'data'){
+main <- function(BASEPAIRS = 300, MAX_NEIGHBORS = 15, PATH = 'data', date = NULL) {
+  current_date <- format(Sys.Date(), "%Y-%m-%d") 
+  # Ask for Running, reloading or exiting while output file path is created
+  output_file <- create_or_validate_output_file_path(basepairs=BASEPAIRS, max_neighbors=MAX_NEIGHBORS, date=date)
+  
   # Read protein and assembly data
   protein_assembly_data <- read_protein_assembly_data(PATH = PATH)
 
@@ -30,8 +34,6 @@ main <- function(BASEPAIRS = 300, MAX_NEIGHBORS = 15, PATH = 'data'){
   # Generate protein alias data from files in representative folder
   PROTEIN_ALIAS <- read_representatives(PATH = PATH) 
   
-  # Get the output file path
-  output_file<- get_output_file_path(basepairs=BASEPAIRS, max_neighbors=MAX_NEIGHBORS)
   
   # Check if the output file exists and if its already present read it
   if (file.exists(output_file)) {
@@ -53,15 +55,15 @@ main <- function(BASEPAIRS = 300, MAX_NEIGHBORS = 15, PATH = 'data'){
   # Geting Clade information from text files
   clades <- read_clades(PATH = PATH)
   
-  # Getting Cluster Domain information from text files
-  cluster_domains <- read_cluster_domain(PATH = PATH)
+  # Generate COG/CDD information from all neighbours proteins based on sequence 
+  cog_neighbours <- analyze_proteins_cog_classifier(df = all.neighbours, column= 'ID' )
   
   # Get the types of neighbours and their counts
-  amount_of_neighbours(cluster_domains)
+  amount_of_neighbours(cog_neighbours, all.neighbours)
   
   # Re-import the types of neighbours after manual annotation
-  if(file.exists("output/types_of_neighbours_annotated.csv")){
-    annotated_neighbours <- read_csv("output/types_of_neighbours_annotated.csv", show_col_types = FALSE)
+  if(file.exists(file.path("output",current_date,"types_of_neighbours_annotated.csv"))){
+    annotated_neighbours <- read_csv(file.path("output",current_date,"types_of_neighbours_annotated.csv"), show_col_types = FALSE)
   } else {
     annotated_neighbours <- NULL
   }
@@ -74,4 +76,4 @@ main <- function(BASEPAIRS = 300, MAX_NEIGHBORS = 15, PATH = 'data'){
   plot_neighbours_per_clade(combined_df) #plot with unkown clades and unkown neighbours
 }
 
-main()
+#main()

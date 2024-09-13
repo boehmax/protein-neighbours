@@ -185,9 +185,40 @@ collec_all_neigbour <- function(protein.assembly, basepairs = 300, max_neighbors
   # Save results of this long run
   output_file <- file.path('output',current_date, paste('all_neighbours_bp', basepairs, '_n', max_neighbors, '.csv', sep = ""))
   write_csv(all.neighbours, output_file)
+
+  fasta_output_file <- file.path('output',current_date, paste('all_neighbours_bp', basepairs, '_n', max_neighbors, '.fasta', sep = ""))
+  data.frame2fasta(all.neighbours, name=c('ID','PIGI','assembly','product'), sequence='seq', output_file = fasta_output_file)
   
   return(all.neighbours)
 
+}
+
+concatenate_columns <- function(df, columns_vector, new_column_name = "concatenated") {
+  # Concatenate specified columns into a single string separated by a comma
+  # df: data frame
+  # columns_vector: vector of column names to concatenate
+  # new_column_name: name of the new column with concatenated values
+  
+  df %>%
+    unite(new_column_name, all_of(columns_vector), sep = ",", remove = FALSE)
+}
+
+data.frame2fasta <- function(df, name_vector, sequence_column="seq", output_file="fasta.fasta"){
+  # Create a fasta file from a data frame
+  # df: data frame
+  # name: column name for the name of the sequence
+  # sequence: column name for the sequence
+  # return: a character vector with the fasta file
+  
+  # Generate new df with a name column and a sequence column
+  df2 <- concatenate_columns(df, name_vector, new_column_name = "name")
+
+  df2 <- df2%>%
+    select(all_of(c("name", sequence_column))) %>%
+    mutate(name = paste(">", name))
+
+  fasta_lines <- do.call(rbind, lapply(seq(nrow(df2)), function(i) t(df2[i, ])))
+  write.table(fasta_lines, row.names = FALSE, col.names = FALSE, quote = FALSE, file = output_file)
 }
 
 #' Plot neighbors
@@ -240,6 +271,7 @@ plot.neighbours <- function(all.neighbours.df, protein.id){
 #' @return A combined data frame.
 #' @export
 combine_and_plot <- function(neighbours_data, cd_data, neighbour_types, clade_assign){
+  current_date <- format(Sys.Date(), "%Y-%m-%d")
   # Merge the fasta and the clade assignment
   neighbours_with_clades <- neighbours_data %>%
     left_join(clade_assign, by='PIGI')
@@ -252,16 +284,17 @@ combine_and_plot <- function(neighbours_data, cd_data, neighbour_types, clade_as
             neighbours_with_clades$neighbour_type <- neighbours_with_clades$product
   }
   
-    write_csv(neighbours_with_clades, "output/combined_df_all_neighbours_assigned.csv")
+    write_csv(neighbours_with_clades, file.path("output", current_date,"combined_df_all_neighbours_assigned.csv"))
     return(neighbours_with_clades)
   }
+  
   combined_data <- neighbours_with_clades %>%
+    mutate(`Short name` = product) %>%
     left_join(cd_data, by = 'ID') %>%
     left_join(neighbour_types, by = 'Short name')
-    mutate(neighbour_type = type.y)
   
   # Save the combined data frame
-  write_csv(combined_data, "output/combined_df_all_neighbours_assigned.csv")
+  write_csv(combined_data, file.path("output", current_date,"combined_df_all_neighbours_assigned.csv"))
   return(combined_data)
 }
 
@@ -270,6 +303,7 @@ combine_and_plot <- function(neighbours_data, cd_data, neighbour_types, clade_as
 #' @param combined_data A combined data frame with neighbors and clade information.
 #' @export
 plot_neighbours_per_clade <- function(combined_data){
+  current_date <- format(Sys.Date(), "%Y-%m-%d")
   # Extract the amount of one type of neighbour per clade 
   neighbour_count_per_clade <- combined_data %>%
     select(ID, clade, neighbour_type) %>%
@@ -362,14 +396,18 @@ plot_neighbours_per_clade <- function(combined_data){
   # Define color vector and print png
   withr::with_options(
     list(ggplot2.discrete.fill = col_vector),
-    ggsave("output/amount_of_neighbour_per_clade.png",
-           width = 30, height = 15, units = "cm")) 
+    ggsave(
+  filename = file.path("output", current_date, "amount_of_neighbour_per_clade.png"),
+  width = 30, height = 15, units = "cm"
+))
   
   # Define color vector and print svg
   withr::with_options(
     list(ggplot2.discrete.fill = col_vector),
-    ggsave("output/amount_of_neighbour_per_clade.svg",
-           width = 30, height = 15, units = "cm"))
+    ggsave(
+  filename = file.path("output", current_date, "amount_of_neighbour_per_clade.svg"),
+  width = 30, height = 15, units = "cm"
+))
 }
 
 #' Plot neighbors per clade without unknown clade
@@ -377,6 +415,7 @@ plot_neighbours_per_clade <- function(combined_data){
 #' @param combined_data A combined data frame with neighbors and clade information.
 #' @export
 plot_neighbours_per_clade2 <- function(combined_data){
+  current_date <- format(Sys.Date(), "%Y-%m-%d")
   # Extract the amount of one type of neighbour per clade 
   neighbour_count_per_clade <- combined_data %>%
     select(ID, clade, neighbour_type) %>%
@@ -413,6 +452,10 @@ plot_neighbours_per_clade2 <- function(combined_data){
     filter(clade != 'unknown_clade') %>%
     filter(neighbour_type != 'unknown')
   
+  if(nrow(neighbour_count_per_clade_no_unkown) == 0){
+    warning("There are only unknown clades and/or neighbours. Skipping the plot.")
+    return()
+  }
   plot_height <- round_any(max(neighbour_count_per_clade$n), 100, f = ceiling)
   
   # Ensure plot_height is a finite number
@@ -460,6 +503,7 @@ plot_neighbours_per_clade2 <- function(combined_data){
     #generate text above the bars with the amount of neighbours
     geom_text(aes(label=n), hjust=-0.2, colour = 'black', size = 2, angle = 90) 
     # Set y axis breaks, limits, and expansion
+
   if (!is.null(plot_height)) {
     p <- p + scale_y_continuous(breaks = seq(0, plot_height, plot_height/5), 
                        limits = c(0,plot_height), 
@@ -476,42 +520,109 @@ plot_neighbours_per_clade2 <- function(combined_data){
   # Define color vector and print png
   withr::with_options(
     list(ggplot2.discrete.fill = col_vector),
-    ggsave("output/amount_of_neighbour_per_cladenounknown.png",
+    ggsave(file.path("output",current_date,"amount_of_neighbour_per_cladenounknown.png"),
            width = 30, height = 15, units = "cm"))
   
   # Define color vector and print svg
   withr::with_options(
     list(ggplot2.discrete.fill = col_vector),
-    ggsave("output/amount_of_neighbour_per_cladenounknown.svg",
+    ggsave(file.path("output",current_date,"amount_of_neighbour_per_cladenounknown.svg"),
          width = 30, height = 15, units = "cm"))
 }
 
 
-#' Get Output File Path Based on Date
+#' Create or Validate Output File Path
 #'
-#' This function asks the user for a date, gets the current date, and determines the output file path based on the provided date or the current date.
-#' If no date is supplied, a folder structure for the curent date is created.
-#' 
-#' @param basepairs Number of base pairs to consider for neighbors.
-#' @param max_neighbors Number of neighbors to find.
-#' @return The output file path.
-#' @export
-get_output_file_path <- function(basepairs, max_neighbors) {
-  # Ask user if they want to reload the data from an older date that they specify
-  date <- readline(prompt = "Enter the date of the data you want to load (YYYY-MM-DD): ")
-  
-  # Get the current date in YYYY-MM-DD format
-  current_date <- format(Sys.Date(), "%Y-%m-%d")
-  
-  # Determine the output file path based on the provided date or current date
-  if (date != "") {
-    output_file <- file.path('output', date, paste('all_neighbours_bp', basepairs, '_n', max_neighbors, '.csv', sep = ""))
-  } else {
-    if (!dir.exists(file.path('output', current_date))) {
-    dir.create(file.path('output', current_date), recursive = TRUE)
+#' This function prompts the user to enter a date and checks if the corresponding directory exists.
+#' If the directory does not exist, it prompts the user with options to rerun, change the date, or exit the program.
+#' The function returns the output file path based on the provided date or the current date.
+#'
+#' @param basepairs An integer representing the number of base pairs.
+#' @param max_neighbors An integer representing the maximum number of neighbors.
+#' @param date A character string representing the date of the data to load in format YYYY-MM-DD (default is NULL).
+#' @return A character string representing the output file path.
+#' @examples
+#' \dontrun{
+#' create_or_validate_output_file_path(100, 5, "2022-01-01")
+#' }
+create_or_validate_output_file_path <- function(basepairs, max_neighbors, date = NULL) {
+    # Get the current date in YYYY-MM-DD format
+    current_date <- format(Sys.Date(), "%Y-%m-%d")
+    if (is.null(date)) {
+  repeat {
+    
+    # Ask user if they want to reload the data from an older date that they specify
+    date <- readline(prompt = "Enter the date of the data you want to load (YYYY-MM-DD): ")
+    
+    
+    # Determine the output file path based on the provided date or current date
+    if (date != "") {
+      output_dir <- file.path('output', date)
+      if (dir.exists(output_dir)) {
+        output_file <- file.path(output_dir, paste('all_neighbours_bp', basepairs, '_n', max_neighbors, '.csv', sep = ""))
+        break
+      } else {
+        cat("There is no valid folder for your date.\n")
+        choice <- readline(prompt = "Do you want to do a new (R)un, (C)hange date, or (E)xit the program? ")
+        if (toupper(choice) == "E") {
+          stop("Exiting the program.")
+        } else if (toupper(choice) == "C") {
+          next
+        } else if (toupper(choice) == "R") {
+          date <- ""
+        }
       }
-    output_file <- file.path('output', current_date, paste('all_neighbours_bp', basepairs, '_n', max_neighbors, '.csv', sep = ""))
+    }
+    
+    if (date == "") {
+      output_dir <- file.path('output', current_date)
+      if (!dir.exists(output_dir)) {
+        dir.create(output_dir, recursive = TRUE)
+      }
+      output_file <- file.path(output_dir, paste('all_neighbours_bp', basepairs, '_n', max_neighbors, '.csv', sep = ""))
+      break
+    }
   }
-  
+  }else{
+    output_dir <- file.path('output', date)
+    if (!dir.exists(output_dir)) {
+      stop("There is no valid folder for your date supplied by main().")
+    }else{
+      output_file <- file.path(output_dir, paste('all_neighbours_bp', basepairs, '_n', max_neighbors, '.csv', sep = ""))
+    }}
   return(output_file)
 }
+
+
+#' Analyze neighbors
+#' 
+#' This function will dowload the sequence of the neighbours an subsequently analyse them via the COGclassifier.
+#' 
+#' @param neighbours_data A data frame with neighbors data.
+#' @param output_dir The output directory.
+#' 
+#' @return A data frame with the COG classification.
+#' @export
+#' 
+analyze_proteins_cog_classifier <- function(df, column= 'ID') {
+  current_date <- format(Sys.Date(), "%Y-%m-%d")
+  output_dir <- paste("output/", current_date, sep = "") 
+  # Export accessions of the neighbours  
+  neighbours_accesions <- data.frame(df%>%select(all_of(column)))
+  write_csv(neighbours_accesions, file.path(output_dir, "neighbours_accesions.csv"), col_names = FALSE)
+
+  # Get the fasta file of the neighbours
+  bash_command <- paste("./get_fasta_from_accession.sh", file.path(output_dir, "neighbours_accesions.csv"), file.path(output_dir, "neighbours.fasta"))
+  cat("Running command:", bash_command, "\n")
+  system2(bash_command, wait = TRUE)
+  
+  # Run COGclassifier
+  cog_command <- paste("COGclassifier -i", file.path(output_dir, "neighbours.fasta"), "-o", file.path(output_dir, "cogclassifier"))
+  cat("Running command:", cog_command, "\n")
+  system2(cog_command, wait = TRUE)
+
+  cog_classification <- read_csv(file.path(output_dir, "cogclassifier/classifier_result.tsv"), show_col_types = FALSE)
+
+  return(cog_classification)
+} 
+

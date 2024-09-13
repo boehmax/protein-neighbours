@@ -29,10 +29,10 @@ read_protein_assembly_data <- function(protein_file = 'proteins.csv',
 #'
 #' @param PATH The base path to the data directory (default is 'data').
 #' @param clade_dir The directory containing clade files (default is 'clades').
-#' @param pattern The pattern to match clade files (default is "Clade*_20231130.txt").
+#' @param pattern The pattern to match clade files (default is "Clade*.txt").
 #' @return A data frame with clade assignments, or an empty data frame if no clade files are found.
 #' @export
-read_clades <- function(PATH = 'data', clade_dir = 'clades', pattern = "Clade*_20231130.txt") {
+read_clades <- function(PATH = 'data', clade_dir = 'clades', pattern = "Clade*.txt") {
   # Load clade information from text files
   clade_path <- file.path(PATH, clade_dir)
   clade_files <- list.files(clade_path, pattern = pattern, full.names = TRUE)
@@ -82,14 +82,14 @@ process_clade_file <- function(file, clade) {
 read_cluster_domain <- function(PATH = 'data', classification_path = file.path('classification', 'COG')) {
   # Load Cluster Domain information from text files
   classification_path <- file.path(PATH, classification_path)
-  cd_files <- list.files(classification_path, pattern = "cog_.*hitdata.txt", full.names = TRUE)
+  cd_files <- list.files(classification_path, pattern = "cog_*hitdata.txt", full.names = TRUE)
   
   # Check if any cluster domain files are found
   if (length(cd_files) == 0) {
     warning("No cluster domain files found. Returning an empty data frame.")
     return(data.frame(Query = character(), `Hit type` = character(), `PSSM-ID` = character(), `From` = integer(), `To` = integer(), `E-Value` = numeric(), Bitscore = numeric(), Accession = factor(), `Short name` = factor(), Incomplete = character(), Superfamily = factor(), ID = character(), stringsAsFactors = FALSE))
   }
-  
+
   # Define a function to read and process each file
   process_cd_files <- function(file) {
     if (file.exists(file)) {
@@ -112,15 +112,34 @@ read_cluster_domain <- function(PATH = 'data', classification_path = file.path('
 #' Get the Types of Neighbours and Their Counts
 #'
 #' This function calculates the types of neighbours and their counts, and generates a plot and CSV file.
+#' If no cluster domain assignments are found, the function uses protein product information for NCBI annotation.
 #'
 #' @param cd_assign A data frame with cluster domain assignments.
+#' @param all.neighbours A data frame with all neighbours.
 #' @export
-amount_of_neighbours <- function(cd_assign){
-  if (nrow(cd_assign) == 0) {
-    warning("No cluster domain assignments found. Skipping the calculation.")
-    return(NULL)
-  }
+amount_of_neighbours <- function(cd_assign, all.neighbours = NULL) {
   current_date <- format(Sys.Date(), "%Y-%m-%d")
+  if (nrow(cd_assign) == 0) {
+    warning("No cluster domain assignments found. Using protein product for NCBI annotiation for calculation.")
+    if (is.null(all.neighbours)) {
+      warning("No neighbours found. Skipping calculation.")
+      return()
+    }
+    types_of_neighbours <- all.neighbours %>%
+    select(`product`) %>%
+    rename(`Short name` = `product`) %>%
+    add_count(`Short name`) %>%
+    arrange(desc(n))%>%
+    unique()
+  # Plot the types of neighbours in a range
+  ggplot(types_of_neighbours[c(1:100),], 
+         aes(x = reorder(`Short name`, -n), y = n)) +
+    geom_bar(stat = "identity")
+  ggsave(file.path('output',current_date,'types_of_neighbours.png'))
+  write_csv(types_of_neighbours, file.path('output',current_date,'types_of_neighbours.csv'))
+
+  }else{
+  
   types_of_neighbours <- cd_assign %>%
     select(`Short name`) %>%
     add_count(`Short name`)  %>%
@@ -132,6 +151,7 @@ amount_of_neighbours <- function(cd_assign){
     geom_bar(stat = "identity")
   ggsave(file.path('output',current_date,'types_of_neighbours.png'))
   write_csv(types_of_neighbours, file.path('output',current_date,'types_of_neighbours.csv'))
+}
   print('Please open the output folder to see the types of neighbours and annotated them as per the instructions in the README.md file')
 }
 
