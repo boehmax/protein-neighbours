@@ -269,7 +269,7 @@ plot.neighbours <- function(all.neighbours.df, protein.id){
 #' @param clade_assign A data frame with clade assignments.
 #' @return A combined data frame.
 #' @export
-combine_and_plot <- function(neighbours_data, cog_data, clade_assign){
+combine_and_plot <- function(neighbours_data, cog_data, clade_assign, neighbour_annotations){
   current_date <- format(Sys.Date(), "%Y-%m-%d")
   
   # Merge the fasta and the clade assignment
@@ -320,8 +320,6 @@ combine_and_plot <- function(neighbours_data, cog_data, clade_assign){
   # Write the combined data to a csv file
   write_csv(combined_data, file.path("output", current_date,"combined_df_all_neighbours_assigned.csv"))
 
-  # Calculate the amount of neighbours per type of neighbour 
-  amount_of_neighbours(combined_data)
 
   return(combined_data)
 }
@@ -360,8 +358,8 @@ plot_neighbours_per_clade <- function(combined_data){
   write_csv(total_neighbours_per_clade, file.path("output", current_date, "total_neighbours_per_clade.csv"))
   
   # Create facet label names for clade variable
-  clade_labels <- paste(c(LETTERS[1:6], 'unkown clade'), ", n=", representatives_per_clade$n, sep="")
-  names(clade_labels) <- c(LETTERS[1:6], 'unknown')
+  clade_labels <- paste(c(LETTERS[1:6], 'hcp', 'unkown clade'), ", n=", representatives_per_clade$n, sep="")
+  names(clade_labels) <- c(LETTERS[1:7], 'unknown')
   
   
   plot_height <- round_any(max(neighbour_count_per_clade$n), 100, f = ceiling)
@@ -395,7 +393,8 @@ plot_neighbours_per_clade <- function(combined_data){
           axis.ticks.length=unit(.2, "cm"),
           axis.line.y = element_line(colour = "black", size = 0.5, linetype = "solid"),
           strip.background =element_blank(),
-          panel.spacing.x= unit(-0.1, "cm")) +
+          panel.spacing.x= unit(-0.1, "cm"),
+          legend.position="right") +
     
     
     # Set x axis expansion to create space between axis and bars
@@ -473,8 +472,8 @@ plot_neighbours_per_clade2 <- function(combined_data){
   
   
   # Create facet label names for clade variable
-  clade_labels <- paste(c(LETTERS[1:6], 'unkown clade'), ", n = ", representatives_per_clade$n, sep="")
-  names(clade_labels) <- c(LETTERS[1:6], 'unknown')
+  clade_labels <- paste(c(LETTERS[1:6],'hcp', 'unkown clade'), ", n = ", representatives_per_clade$n, sep="")
+  names(clade_labels) <- c(LETTERS[1:7], 'unknown')
   
   
   
@@ -519,7 +518,8 @@ plot_neighbours_per_clade2 <- function(combined_data){
           axis.ticks.length=unit(.2, "cm"),
           axis.line.y = element_line(colour = "black", size = 0.5, linetype = "solid"),
           strip.background =element_blank(),
-          panel.spacing.x= unit(-0.1, "cm")) +
+          panel.spacing.x= unit(-0.1, "cm"),
+          legend.position="right") +
     
     # Set x axis expansion to create space between axis and bars
     scale_x_discrete(expand=c(0,1)) +
@@ -652,7 +652,7 @@ analyze_proteins_cog_classifier <- function(df, column= 'ID') {
   cat("Running command:", cog_command, "\n")
   system2(cog_command, wait = TRUE)
 
-  cog_classification <- read_csv(file.path(output_dir, "cogclassifier/classifier_result.tsv"), show_col_types = FALSE)
+  cog_classification <- read.delim(file.path(output_dir, "cogclassifier/classifier_result.tsv"))
 
 
   return(cog_classification)

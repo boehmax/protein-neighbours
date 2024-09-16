@@ -62,13 +62,13 @@ main <- function(BASEPAIRS = 300, MAX_NEIGHBORS = 15, PATH = 'data', date = NULL
   # This doesnt seem to work so far... the code that is printed in the terminal needs to be copied and run "by hand"
   # Also not very elegant, since i inserted a sleeper function to make the download more stable it now takes the program
   # 0.5 sec per Accession, which translates to 30 min per 3600 accession, which is easily reached 
-  amount_of_neighbours(cog_neighbours, all.neighbours)
+  amount_of_neighbours(cog_neighbours)
   
   # Re-import the types of neighbours after manual annotation if present
-  annotated_neighbours <- read_annotations(curren_date)
+  annotated_neighbours <- read_annotations(current_date)
   
   # Combine and plot
-  combined_df <- combine_and_plot(all.neighbours, cluster_domains, annotated_neighbours, clades, annotated_neighbours)
+  combined_df <- combine_and_plot(neighbours_data = all.neighbours, cog_data = cog_neighbours, clade_assign = clades, neighbour_annotations = annotated_neighbours)
 
   # Plot data
   plot_neighbours_per_clade2(combined_df) #more pretty plot without unkown clades and unkown neighbours

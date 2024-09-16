@@ -32,7 +32,7 @@ read_protein_assembly_data <- function(protein_file = 'proteins.csv',
 #' @param pattern The pattern to match clade files (default is "Clade*.txt").
 #' @return A data frame with clade assignments, or an empty data frame if no clade files are found.
 #' @export
-read_clades <- function(PATH = 'data', clade_dir = 'clades', pattern = "Clade*.txt") {
+read_clades <- function(PATH = 'data', clade_dir = 'clades', pattern = "^[C]") {
   # Load clade information from text files
   clade_path <- file.path(PATH, clade_dir)
   clade_files <- list.files(clade_path, pattern = pattern, full.names = TRUE)
@@ -70,20 +70,19 @@ process_clade_file <- function(file, clade) {
 #' This function calculates the types of neighbours and their counts, and generates a plot and CSV file.
 #' If no cluster domain assignments are found, the function uses protein product information for NCBI annotation.
 #'
-#' @param cd_assign A data frame with cluster domain assignments.
-#' @param all.neighbours A data frame with all neighbours.
+#' @param cog_data Dataframe with cog_data.
 #' @export
-amount_of_neighbours <- function(combined_data) {
+amount_of_neighbours <- function(cog_data) {
   current_date <- format(Sys.Date(), "%Y-%m-%d")
 
-    types_of_neighbours <- all.neighbours %>%
+    types_of_neighbours <- cog_data %>%
     select(COG_NAME, COG_LETTER) %>%
     add_count(COG_NAME) %>%
     arrange(desc(n))%>%
     unique()
   # Plot the types of neighbours in a range
   ggplot(types_of_neighbours[c(1:100),], 
-         aes(x = reorder(`Short name`, -n), y = n)) +
+         aes(x = reorder(COG_LETTER, -n), y = n)) +
     geom_bar(stat = "identity")
   ggsave(file.path('output',current_date,'types_of_neighbours.png'))
   write_csv(types_of_neighbours, file.path('output',current_date,'types_of_neighbours.csv'))
@@ -159,7 +158,7 @@ read_representatives <- function(PATH = 'data',
   }
   
   # Read the IPG alias data
-  ipg_alias <- read_alias_file(ipg_file, c('alias', 'PIGI'))
+  ipg_alias <- read_alias_file(ipg_file, c('PIGI', 'alias'))
   if (!is.null(ipg_alias)) ipg_alias$identity <- 1
   
   # Read the PDB alias data
@@ -167,7 +166,7 @@ read_representatives <- function(PATH = 'data',
   if (!is.null(pdb_alias)) pdb_alias$identity <- 1
   
   # Read the cluster alias data
-  cluster_alias <- read_alias_file(cluster_file, c('alias', 'PIGI', 'identity'))
+  cluster_alias <- read_alias_file(cluster_file, c( 'PIGI', 'alias', 'identity'))
   if (!is.null(cluster_alias)) {
     cluster_alias <- cluster_alias %>%
       mutate(identity = as.numeric(sub("%", "", identity)) / 100)
