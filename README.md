@@ -68,6 +68,9 @@ During the analysis of the primary list of proteins, it might happen that the pr
 - **`IPGI`**: The protein accession you provided as input, which resulted in the `accession`.
 - **`identity`**: Specifies how the amino acid sequence of the PIGI relates to that of the `accession`. For the `ipg_` and `pdb_` files, this can be omitted since it is expected to be 1. For the `cluster` files, this can be anything between 0.9 to 1 (depending on what you specified in your CD-Hit run as the cutoff).
 
+### COG files
+- PATH/classification/COG/cog_*hitdata.txt: File(s) created by XXX webserver to generate annotation of genes.
+
 ## Parameters
 
 - **BASEPAIRS**: The maximum distance in base pairs between two proteins to consider them as neighbors. Default is `300`.
