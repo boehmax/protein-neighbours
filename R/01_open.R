@@ -42,14 +42,7 @@ read_clades <- function(PATH = 'data', clade_dir = 'clades', pattern = "Clade*.t
     warning("No clade files found. Returning an empty data frame.")
     return(data.frame(protein.id = character(), clade = character(), PIGI = character(), stringsAsFactors = FALSE))
   }
-  
-  # Define a function to read and process each file
-  process_clade_file <- function(file, clade) {
-    read_delim(file, col_names = c('protein.id', 'V2', 'V3', 'V4'), delim = "/", show_col_types = FALSE) %>%
-      select(protein.id) %>%
-      mutate(clade = clade)
-  }
-  
+    
   # Apply the function to each file and clade, then bind rows
   clade_assign <- map2_df(clade_files, LETTERS[1:length(clade_files)], process_clade_file)
   clade_assign$PIGI <- unlist(flatten(lapply(clade_assign$protein.id, function(i) { protein.alias(i, verbose = FALSE)[1, 1] })))
@@ -71,43 +64,6 @@ process_clade_file <- function(file, clade) {
     mutate(clade = clade)
 }
 
-#' Read Cluster Domain Information
-#'
-#' This function reads and processes cluster domain information from text files.
-#'
-#' @param PATH The base path to the data directory (default is 'data').
-#' @param classification_path The path to the classification directory (default is 'classification/COG').
-#' @return A data frame with cluster domain assignments, or an empty data frame if no cluster domain files are found.
-#' @export
-read_cluster_domain <- function(PATH = 'data', classification_path = file.path('classification', 'COG')) {
-  # Load Cluster Domain information from text files
-  classification_path <- file.path(PATH, classification_path)
-  cd_files <- list.files(classification_path, pattern = "cog_*hitdata.txt", full.names = TRUE)
-  
-  # Check if any cluster domain files are found
-  if (length(cd_files) == 0) {
-    warning("No cluster domain files found. Returning an empty data frame.")
-    return(data.frame(Query = character(), `Hit type` = character(), `PSSM-ID` = character(), `From` = integer(), `To` = integer(), `E-Value` = numeric(), Bitscore = numeric(), Accession = factor(), `Short name` = factor(), Incomplete = character(), Superfamily = factor(), ID = character(), stringsAsFactors = FALSE))
-  }
-
-  # Define a function to read and process each file
-  process_cd_files <- function(file) {
-    if (file.exists(file)) {
-      read_delim(file, col_names = c('Query', 'Hit type', 'PSSM-ID', 'From', 'To', 'E-Value', 'Bitscore', 'Accession', 'Short name', 'Incomplete', 'Superfamily'), skip = 8, delim = "\t", show_col_types = FALSE) %>%
-        mutate(ID = gsub(".*-", "", Query)) %>%
-        mutate(across(c('Superfamily', 'Short name', 'Accession'), as.factor)) %>%
-        mutate(`Short name` = sub(" superfamily", "", `Short name`)) %>%
-        mutate(ID = sub(" ", "", ID))
-    } else {
-      warning(paste("Concerved Domain files not found:", file))
-      return(NULL)
-    }
-  }
-  # Apply the function to each file and clade, then bind rows
-  cd_assign <- map_df(cd_files, process_cd_files)
-  return(cd_assign)
-  
-}
 
 #' Get the Types of Neighbours and Their Counts
 #'
@@ -117,32 +73,12 @@ read_cluster_domain <- function(PATH = 'data', classification_path = file.path('
 #' @param cd_assign A data frame with cluster domain assignments.
 #' @param all.neighbours A data frame with all neighbours.
 #' @export
-amount_of_neighbours <- function(cd_assign, all.neighbours = NULL) {
+amount_of_neighbours <- function(combined_data) {
   current_date <- format(Sys.Date(), "%Y-%m-%d")
-  if (nrow(cd_assign) == 0) {
-    warning("No cluster domain assignments found. Using protein product for NCBI annotiation for calculation.")
-    if (is.null(all.neighbours)) {
-      warning("No neighbours found. Skipping calculation.")
-      return()
-    }
-    types_of_neighbours <- all.neighbours %>%
-    select(`product`) %>%
-    rename(`Short name` = `product`) %>%
-    add_count(`Short name`) %>%
-    arrange(desc(n))%>%
-    unique()
-  # Plot the types of neighbours in a range
-  ggplot(types_of_neighbours[c(1:100),], 
-         aes(x = reorder(`Short name`, -n), y = n)) +
-    geom_bar(stat = "identity")
-  ggsave(file.path('output',current_date,'types_of_neighbours.png'))
-  write_csv(types_of_neighbours, file.path('output',current_date,'types_of_neighbours.csv'))
 
-  }else{
-  
-  types_of_neighbours <- cd_assign %>%
-    select(`Short name`) %>%
-    add_count(`Short name`)  %>%
+    types_of_neighbours <- all.neighbours %>%
+    select(COG_NAME, COG_LETTER) %>%
+    add_count(COG_NAME) %>%
     arrange(desc(n))%>%
     unique()
   # Plot the types of neighbours in a range
@@ -151,9 +87,44 @@ amount_of_neighbours <- function(cd_assign, all.neighbours = NULL) {
     geom_bar(stat = "identity")
   ggsave(file.path('output',current_date,'types_of_neighbours.png'))
   write_csv(types_of_neighbours, file.path('output',current_date,'types_of_neighbours.csv'))
+ 
+  print('Please open the output folder to see the types of neighbours and annotated them as per the instructions in the README.md file (optional)')
 }
-  print('Please open the output folder to see the types of neighbours and annotated them as per the instructions in the README.md file')
+
+#' Read Neighbour Annotations
+#'
+#' This function re-imports the types of neighbours after manual annotation.
+#'
+#' @param current_date A string representing the current date, used to locate the annotated CSV file.
+#' @param empty_cells A string representing the value to replace empty cells with. Default is "unknown".
+#' @return A data frame containing the annotated neighbours if the file exists, otherwise NULL.
+#' @importFrom readr read_csv
+#' @importFrom dplyr mutate_all rename
+#' @importFrom tidyr replace_na
+#' @export
+read_annotations <- function(current_date, empty_cells = "unknown") {
+  # Re-import the types of neighbours after manual annotation
+  if(file.exists(file.path("output", current_date, "types_of_neighbours_annotated.csv"))){
+    annotated_neighbours <- read_csv(file.path("output", current_date, "types_of_neighbours_annotated.csv"), show_col_types = FALSE)
+    
+    # Replace empty cells with NA
+    annotated_neighbours <- annotated_neighbours %>%
+      mutate_all(~ifelse(. == "", NA, .))
+    
+    # Replace NA with the specified value
+    if (!is.null(empty_cells)) {
+      annotated_neighbours <- annotated_neighbours %>%
+        replace_na(list_fill(empty_cells))
+    }
+    
+    # Rename columns
+    colnames(annotated_neighbours)[1:3] <- c("COG_NAME", "N", "ANNOTATION")
+  } else {
+    annotated_neighbours <- NULL
+  }
+  return(annotated_neighbours)
 }
+
 
 # Protein Alias ####
 

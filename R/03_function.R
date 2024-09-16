@@ -265,36 +265,64 @@ plot.neighbours <- function(all.neighbours.df, protein.id){
 #' Combine and plot neighbors
 #'
 #' @param neighbours_data A data frame with neighbors data.
-#' @param cd_data A data frame with "conserved domain" data.
-#' @param neighbour_types A data frame with neighbor types.
+#' @param cog_data A data frame with COG information from analyze_proteins_cog_classifier function.
 #' @param clade_assign A data frame with clade assignments.
 #' @return A combined data frame.
 #' @export
-combine_and_plot <- function(neighbours_data, cd_data, neighbour_types, clade_assign){
+combine_and_plot <- function(neighbours_data, cog_data, clade_assign){
   current_date <- format(Sys.Date(), "%Y-%m-%d")
+  
   # Merge the fasta and the clade assignment
-  neighbours_with_clades <- neighbours_data %>%
-    left_join(clade_assign, by='PIGI')
+  if (is.null(clade_assign)) {
+    warning("No clade assignment found. Skipping the combination.")
+    neighbours_with_clades <- neighbours_data %>%
+      mutate(clade = 'unknown')
+  }else{
+    # Merge the clade assignment
+    neighbours_with_clades <- neighbours_data %>%
+      left_join(clade_assign, by='PIGI')%>%
+      replace_na(list(clade = 'unknown'))
+  }
 
   # Combine all information into one dataframe if possible
-  if (is.null(neighbour_types)) {
-    warning("No additional neighbour data found. Skipping the combination. Using porduct.")
-         if(!'Short name' %in% colnames(neighbours_with_clades)){
-            neighbours_with_clades$`Short name` <- neighbours_with_clades$product
-            neighbours_with_clades$neighbour_type <- neighbours_with_clades$product
+  if (is.null(cog_data)) {
+    warning("No additional COG data found. Skipping the combination.")
+    combined_data <- neighbours_with_clades %>%
+      mutate(COG_ID = NA,
+              CDD_ID = NA,
+              EVALUE = NA,
+              GENE_NAME = NA,
+              COG_NAME = 'unkown',
+              COG_LETTER = 'unkown',
+              COG_DESCRIPTION = 'unkown'
+              )
+
+  }else{
+    # Merge the COG data
+    combined_data <- neighbours_with_clades %>%
+      left_join(cog_data, by = c("ID" = "QUERY_ID")) %>%
+      replace_na(list(COG_ID = NA,
+                      CDD_ID = NA,
+                      EVALUE = NA,
+                      GENE_NAME = NA,
+                      COG_NAME = 'unkown',
+                      COG_LETTER = 'unkown',
+                      COG_DESCRIPTION = 'unkown'
+                      ))
+  } 
+
+  if(!is.null(neighbour_annotations)){
+    combined_data <- combined_data %>%
+      left_join(neighbour_annotations, by = c("COG_NAME" = "COG_NAME")) %>%
+      replace_na(list(annotation = 'unknown'))
   }
-  
-    write_csv(neighbours_with_clades, file.path("output", current_date,"combined_df_all_neighbours_assigned.csv"))
-    return(neighbours_with_clades)
-  }
-  
-  combined_data <- neighbours_with_clades %>%
-    mutate(`Short name` = product) %>%
-    left_join(cd_data, by = 'ID') %>%
-    left_join(neighbour_types, by = 'Short name')
-  
-  # Save the combined data frame
+
+  # Write the combined data to a csv file
   write_csv(combined_data, file.path("output", current_date,"combined_df_all_neighbours_assigned.csv"))
+
+  # Calculate the amount of neighbours per type of neighbour 
+  amount_of_neighbours(combined_data)
+
   return(combined_data)
 }
 
@@ -306,31 +334,34 @@ plot_neighbours_per_clade <- function(combined_data){
   current_date <- format(Sys.Date(), "%Y-%m-%d")
   # Extract the amount of one type of neighbour per clade 
   neighbour_count_per_clade <- combined_data %>%
-    select(ID, clade, neighbour_type) %>%
+    select(ID, clade, COG_LETTER) %>%
     distinct() %>%
-    count(clade, neighbour_type, .drop = FALSE) %>%
-    replace_na(list(clade = "unknown_clade", neighbour_type = "unknown")) %>%
-    mutate(neighbour_type = as.factor(neighbour_type))
+    count(clade, COG_LETTER, .drop = FALSE) %>%
+    replace_na(list(clade = "unknown", COG_LETTER = "unknown")) %>%
+    mutate(COG_LETTER = as.factor(COG_LETTER))
+  write_csv(neighbour_count_per_clade, file.path("output", current_date, "neighbour_count_per_clade.csv"))
   
   # Extract how many representatives from each clade were involved
   representatives_per_clade <- combined_data %>%
-    select(ID, clade, neighbour_type, PIGI) %>%
-    replace_na(list(clade = "unknown_clade")) %>%
+    select(ID, clade, COG_LETTER, PIGI) %>%
+    replace_na(list(clade = "unknown")) %>%
     distinct(PIGI, clade) %>%
     count(clade, .drop = FALSE) %>%
     mutate(clade = as.factor(clade))
+  write_csv(representatives_per_clade, file.path("output", current_date, "representatives_per_clade.csv"))
   
   # Extract how many neighbours from each clade were found
-  neighbours_per_clade <- combined_data %>%
-    select(ID, clade, neighbour_type, PIGI) %>%
-    distinct(neighbour_type, clade) %>%
+  total_neighbours_per_clade <- combined_data %>%
+    select(ID, clade, COG_LETTER, PIGI) %>%
+    distinct(COG_LETTER, clade) %>%
     count(clade, .drop = FALSE) %>%
     mutate(across(where(is.factor), as.character)) %>%
-    replace_na(list(clade = "unknown_clade"))
+    replace_na(list(clade = "unknown"))
+  write_csv(total_neighbours_per_clade, file.path("output", current_date, "total_neighbours_per_clade.csv"))
   
   # Create facet label names for clade variable
   clade_labels <- paste(c(LETTERS[1:6], 'unkown clade'), ", n=", representatives_per_clade$n, sep="")
-  names(clade_labels) <- c(LETTERS[1:6], 'unknown_clade')
+  names(clade_labels) <- c(LETTERS[1:6], 'unknown')
   
   
   plot_height <- round_any(max(neighbour_count_per_clade$n), 100, f = ceiling)
@@ -342,7 +373,7 @@ plot_neighbours_per_clade <- function(combined_data){
   }
 
   # Plot the amount of neighbour of one sort per clade
-  p <- ggplot(neighbour_count_per_clade, aes(x= neighbour_type, y= n, fill=neighbour_type)) + 
+  p <- ggplot(neighbour_count_per_clade, aes(x= COG_LETTER, y= n, fill=COG_LETTER)) + 
     # Add bars with identity statistic, position them side by side (dodge), and outline in black
     geom_bar(stat = "identity", position = "dodge", color = "black", width = 1) +
     
@@ -418,39 +449,39 @@ plot_neighbours_per_clade2 <- function(combined_data){
   current_date <- format(Sys.Date(), "%Y-%m-%d")
   # Extract the amount of one type of neighbour per clade 
   neighbour_count_per_clade <- combined_data %>%
-    select(ID, clade, neighbour_type) %>%
+    select(ID, clade, COG_LETTER) %>%
     distinct() %>%
-    count(clade, neighbour_type, .drop = FALSE) %>%
-    replace_na(list(clade = "unknown_clade", neighbour_type = "unknown")) %>%
-    mutate(neighbour_type = as.factor(neighbour_type))
+    count(clade, COG_LETTER, .drop = FALSE) %>%
+    replace_na(list(clade = "unknown", COG_LETTER = "unknown")) %>%
+    mutate(COG_LETTER = as.factor(COG_LETTER))
   
   # Extract how many representatives from each clade were involved
   representatives_per_clade <- combined_data %>%
-    select(ID, clade, neighbour_type, PIGI) %>%
-    replace_na(list(clade = "unknown_clade")) %>%
+    select(ID, clade, COG_LETTER, PIGI) %>%
+    replace_na(list(clade = "unknown")) %>%
     distinct(PIGI, clade) %>%
     count(clade, .drop = FALSE) %>%
     mutate(clade = as.factor(clade))
   
   # Extract how many neighbours from each clade were found
-  neighbours_per_clade <- combined_data %>%
-    select(ID, clade, neighbour_type, PIGI) %>%
-    distinct(neighbour_type, clade) %>%
+  total_neighbours_per_clade <- combined_data %>%
+    select(ID, clade, COG_LETTER, PIGI) %>%
+    distinct(COG_LETTER, clade) %>%
     count(clade, .drop = FALSE) %>%
     mutate(across(where(is.factor), as.character)) %>%
-    replace_na(list(clade = "unknown_clade"))
+    replace_na(list(clade = "unknown"))
   
   
   # Create facet label names for clade variable
   clade_labels <- paste(c(LETTERS[1:6], 'unkown clade'), ", n = ", representatives_per_clade$n, sep="")
-  names(clade_labels) <- c(LETTERS[1:6], 'unknown_clade')
+  names(clade_labels) <- c(LETTERS[1:6], 'unknown')
   
   
   
   # Plot the amount of neighbour of one sort per clade without unknown clade
   neighbour_count_per_clade_no_unkown <- neighbour_count_per_clade %>%
-    filter(clade != 'unknown_clade') %>%
-    filter(neighbour_type != 'unknown')
+    filter(clade != 'unknown') %>%
+    filter(COG_LETTER != 'unknown')
   
   if(nrow(neighbour_count_per_clade_no_unkown) == 0){
     warning("There are only unknown clades and/or neighbours. Skipping the plot.")
@@ -464,7 +495,7 @@ plot_neighbours_per_clade2 <- function(combined_data){
     plot_height <- NULL
   }
   # Plot the amount of neighbour of one sort per clade
-  p<-ggplot(neighbour_count_per_clade_no_unkown, aes(x= neighbour_type, y= n, fill=neighbour_type)) +
+  p<-ggplot(neighbour_count_per_clade_no_unkown, aes(x= COG_LETTER, y= n, fill=COG_LETTER)) +
     # Add bars with identity statistic, position them side by side (dodge), and outline in black
     geom_bar(stat = "identity", position = "dodge", color = "black", width = 1) +
     
@@ -623,6 +654,9 @@ analyze_proteins_cog_classifier <- function(df, column= 'ID') {
 
   cog_classification <- read_csv(file.path(output_dir, "cogclassifier/classifier_result.tsv"), show_col_types = FALSE)
 
+
   return(cog_classification)
 } 
+
+
 

@@ -59,17 +59,16 @@ main <- function(BASEPAIRS = 300, MAX_NEIGHBORS = 15, PATH = 'data', date = NULL
   cog_neighbours <- analyze_proteins_cog_classifier(df = all.neighbours, column= 'ID' )
   
   # Get the types of neighbours and their counts
+  # This doesnt seem to work so far... the code that is printed in the terminal needs to be copied and run "by hand"
+  # Also not very elegant, since i inserted a sleeper function to make the download more stable it now takes the program
+  # 0.5 sec per Accession, which translates to 30 min per 3600 accession, which is easily reached 
   amount_of_neighbours(cog_neighbours, all.neighbours)
   
-  # Re-import the types of neighbours after manual annotation
-  if(file.exists(file.path("output",current_date,"types_of_neighbours_annotated.csv"))){
-    annotated_neighbours <- read_csv(file.path("output",current_date,"types_of_neighbours_annotated.csv"), show_col_types = FALSE)
-  } else {
-    annotated_neighbours <- NULL
-  }
+  # Re-import the types of neighbours after manual annotation if present
+  annotated_neighbours <- read_annotations(curren_date)
   
   # Combine and plot
-  combined_df <- combine_and_plot(all.neighbours, cluster_domains, annotated_neighbours, clades)
+  combined_df <- combine_and_plot(all.neighbours, cluster_domains, annotated_neighbours, clades, annotated_neighbours)
 
   # Plot data
   plot_neighbours_per_clade2(combined_df) #more pretty plot without unkown clades and unkown neighbours
