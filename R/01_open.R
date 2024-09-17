@@ -113,11 +113,11 @@ read_annotations <- function(current_date, empty_cells = "unknown") {
     # Replace NA with the specified value
     if (!is.null(empty_cells)) {
       annotated_neighbours <- annotated_neighbours %>%
-        replace_na(list_fill(empty_cells))
+        replace_na(list(COG_NAME = empty_cells, COG_LETTER= empty_cells, N = empty_cells, ANNOTATION = empty_cells))
     }
     
     # Rename columns
-    colnames(annotated_neighbours)[1:3] <- c("COG_NAME", "N", "ANNOTATION")
+    colnames(annotated_neighbours)[1:3] <- c("COG_NAME", "COG_LETTER","N", "ANNOTATION")
   } else {
     annotated_neighbours <- NULL
   }

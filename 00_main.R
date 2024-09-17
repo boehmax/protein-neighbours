@@ -15,6 +15,7 @@ library(RColorBrewer)
 source('R/01_open.R')
 source('R/02_clean.R')
 source('R/03_function.R')
+source('R/04_plotting.R')
 
 # Loading the Data ####
 main <- function(BASEPAIRS = 300, MAX_NEIGHBORS = 15, PATH = 'data', date = NULL) {
@@ -71,8 +72,44 @@ main <- function(BASEPAIRS = 300, MAX_NEIGHBORS = 15, PATH = 'data', date = NULL
   combined_df <- combine_and_plot(neighbours_data = all.neighbours, cog_data = cog_neighbours, clade_assign = clades, neighbour_annotations = annotated_neighbours)
 
   # Plot data
-  plot_neighbours_per_clade2(combined_df) #more pretty plot without unkown clades and unkown neighbours
+  plot_neighbours_per_clade(combined_df, exclude_unknown_clade = TRUE, exclude_unknown_cog = TRUE) #more pretty plot without unkown clades and unkown neighbours
   plot_neighbours_per_clade(combined_df) #plot with unkown clades and unkown neighbours
-}
+  plot_neighbours_per_clade(combined_df, exclude_unknown_clade = TRUE, exclude_unknown_cog = TRUE, , plot_count_codh = TRUE) #more pretty plot without unkown clades and unkown neighbours
+  plot_neighbours_per_clade(combined_df, plot_count_codh = TRUE)
+  # Correlation Plot: Assembly containing CODHs and HCPs
+  # Right now there is the problem that this only includes CODH/HCP that have a neighbour
+  make_correlation_matrix(combined_df%>%
+                            select(PIGI, assembly, clade)%>%
+                            unique()%>%
+                            select(assembly,clade), unique(combined_df$clade))
+  
+  # Amount of Assemblies with multiple HCP/CODH
+  # Right now there is the problem that this only includes CODH/HCP that have a neighbour
+  
+  create_clade_histograms2(combined_df%>%
+                             select(PIGI, assembly, clade)%>%
+                             unique())
+  
+  
+  # Neighbour plot with annotated neighbours
+  if(!length(combined_df$ANNOTATION)==0){
+    plot_neighbours_per_clade(combined_df%>%mutate(COG_LETTER=ANNOTATION), exclude_unknown_clade = TRUE, exclude_unknown_cog = TRUE, output_path = "annotated_neighbours") #more pretty plot without unkown clades and unkown neighbours
+    plot_neighbours_per_clade(combined_df%>%mutate(COG_LETTER=ANNOTATION), output_path = "annotated_neighbours")
+    plot_neighbours_per_clade(combined_df%>%mutate(COG_LETTER=ANNOTATION), exclude_unknown_clade = TRUE, exclude_unknown_cog = TRUE, output_path = "annotated_neighbours", plot_count_codh = TRUE) #more pretty plot without unkown clades and unkown neighbours
+    plot_neighbours_per_clade(combined_df%>%mutate(COG_LETTER=ANNOTATION), output_path = "annotated_neighbours", plot_count_codh = TRUE)
+    
+    }
+  # Neighbour plot per Clade
+  
+  # Add horizontal line to neighbour plot representing the median neighbour
+  # and maybe create plot where neighbours counted less than the median will be not shown to improve clarity
+  
+  # make sure the import of old data works well, it require the proteins.csv file to be in current date folde.. this should not be necessary
+  
+  # BIG to do: dont count neighbour but CODH/HCP with that neighbour
+  
+  
+  
+  }
 
 #main()

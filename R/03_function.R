@@ -313,7 +313,7 @@ combine_and_plot <- function(neighbours_data, cog_data, clade_assign, neighbour_
 
   if(!is.null(neighbour_annotations)){
     combined_data <- combined_data %>%
-      left_join(neighbour_annotations, by = c("COG_NAME" = "COG_NAME")) %>%
+      left_join(neighbour_annotations%>%select(COG_NAME,ANNOTATION), by = "COG_NAME") %>%
       replace_na(list(annotation = 'unknown'))
   }
 
@@ -454,6 +454,16 @@ plot_neighbours_per_clade2 <- function(combined_data){
     replace_na(list(clade = "unknown", COG_LETTER = "unknown")) %>%
     mutate(COG_LETTER = as.factor(COG_LETTER))
   
+  # Extract how many CODH/HCP have at least one neighbour of a certaint type
+    # Extract the amount of one type of neighbour per clade 
+  codh_count_per_clade_per_cog <- combined_data %>%
+    select(PIGI, clade, COG_LETTER) %>%
+    distinct() %>%
+    count(clade, COG_LETTER, .drop = FALSE) %>%
+    replace_na(list(clade = "unknown", COG_LETTER = "unknown")) %>%
+    mutate(COG_LETTER = as.factor(COG_LETTER))
+  
+
   # Extract how many representatives from each clade were involved
   representatives_per_clade <- combined_data %>%
     select(ID, clade, COG_LETTER, PIGI) %>%
