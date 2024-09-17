@@ -74,7 +74,7 @@ main <- function(BASEPAIRS = 300, MAX_NEIGHBORS = 15, PATH = 'data', date = NULL
   # Plot data
   plot_neighbours_per_clade(combined_df, exclude_unknown_clade = TRUE, exclude_unknown_cog = TRUE) #more pretty plot without unkown clades and unkown neighbours
   plot_neighbours_per_clade(combined_df) #plot with unkown clades and unkown neighbours
-  plot_neighbours_per_clade(combined_df, exclude_unknown_clade = TRUE, exclude_unknown_cog = TRUE, , plot_count_codh = TRUE) #more pretty plot without unkown clades and unkown neighbours
+  plot_neighbours_per_clade(combined_df, exclude_unknown_clade = TRUE, exclude_unknown_cog = TRUE, plot_count_codh = TRUE) #more pretty plot without unkown clades and unkown neighbours
   plot_neighbours_per_clade(combined_df, plot_count_codh = TRUE)
   # Correlation Plot: Assembly containing CODHs and HCPs
   # Right now there is the problem that this only includes CODH/HCP that have a neighbour
