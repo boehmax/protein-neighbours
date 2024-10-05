@@ -35,12 +35,12 @@ getAttributeField <- function (x, field, attrsep = ";") {
 #' Find the protein alias
 #'
 #' @param protein.id The protein ID to search for.
-#' @param alias The alias database (default is PROTEIN_ALIAS).
+#' @param alias The alias database .
 #' @param verbose Whether to print additional information (default is FALSE).
 #' @param identi Whether to include identity information (default is FALSE).
 #' @return A data frame with the corresponding PIGI and alias.
 #' @export
-protein.alias <- function(protein.id, alias = PROTEIN_ALIAS, verbose = FALSE, identi = FALSE){
+protein.alias <- function(protein.id, alias, verbose = FALSE, identi = FALSE){
   # Check if the protein ID is in the alias database
   if(length(alias$alias == protein.id) > 0){
     # If it is, find the corresponding PIGI
@@ -73,6 +73,71 @@ protein.alias <- function(protein.id, alias = PROTEIN_ALIAS, verbose = FALSE, id
     return(protein.id)
   }
 }
+
+#' Get protein information from gff file
+#' 
+#' @param input The path to the GFF file.
+#' @param protein.id The protein ID to search for.
+#' @return A data frame with the protein information.
+#' @export
+#' 
+getProteinInfoFromGff <- function(input, protein.id){
+  # Inform the user which input is being processed
+  message(paste("Processing input:", input))
+  
+  # Check if the file exists
+  if (!file.exists(input)) {
+    warning(paste("File not found:", input, "- Skipping this input."))
+    return(NULL)
+  }
+  
+  # Import gff file
+  gffData <- read.gff(input, na.strings = c(".", "?"), GFF3 = TRUE)
+  
+  # Get Protein ID and product separately
+  gffData <- gffData %>%
+    mutate(ID = gsub(".*\\-", "", getAttributeField(attributes, "ID")),
+           product = getAttributeField(attributes, "product"))
+  
+  # Get protein information
+  protein_info <- gffData %>% filter(ID == protein.id)
+  
+  return(protein_info)
+}
+
+#' Collect all protein information
+#' 
+#' @param protein.assembly A data frame with protein and assembly information.
+#' @param PATH Path where to ncbi_dataset folder is stored (default = data).
+#' @return A data frame with all protein information.
+#' @export
+#' 
+collect_all_protein_info <- function(protein.assembly, PATH = 'data'){
+  all.protein.info <- data.frame() # Initialize empty data frame for all protein information
+  for(i in seq_len(nrow(protein.assembly))){
+    # Get protein information for each protein
+    pi <- getProteinInfoFromGff(paste(PATH,'/ncbi_dataset/data/', protein.assembly[i,1],'/genomic.gff', sep = ""), protein.assembly[i,2])
+    # Skip the iteration if pi is NULL
+    if (is.null(pi)) {
+        next
+    }
+    # Add protein and assembly information to all protein information data frame
+    pi <- pi %>%
+      mutate(PIGI = protein.assembly[i,2],  # Protein I Gave as Input
+             assembly = protein.assembly[i,1])
+    # Add protein information to all protein information data frame
+    all.protein.info <- rbind(all.protein.info, pi)
+  }
+  all.protein.info$is.neighbour <- FALSE
+  # Get the current date in YYYY-MM-DD format
+  current_date <- format(Sys.Date(), "%Y-%m-%d")
+  # Save results of this long run
+  output_file <- file.path('output',current_date, 'all_protein_info.csv')
+  write_csv(all.protein.info, output_file)
+  
+  return(all.protein.info)
+}
+
 
 #' Get neighboring proteins
 #'
@@ -155,7 +220,7 @@ getProteinNeighborsFromGff3 <- function(input, protein.id, basepairs = 300, m = 
 #'
 #' @param protein.assembly A data frame with protein and assembly information.
 #' @param basepairs Number of base pairs to consider for neighbors (default is 300).
-#' @param m Number of neighbors to find (default is 15).
+#' @param max_neighbors Number of neighbors to find (default is 15).
 #' @param PATH Path where to ncbi_dataset folder is stored (default = data).
 #' @return A data frame with all neighbors.
 #' @export
@@ -179,15 +244,15 @@ collec_all_neigbour <- function(protein.assembly, basepairs = 300, max_neighbors
       # Add neighbors to all neighbors data frame
       all.neighbours <- rbind(all.neighbours, np)}
     }
-
+  all.neighbours$is.neighbour <- TRUE
   # Get the current date in YYYY-MM-DD format
   current_date <- format(Sys.Date(), "%Y-%m-%d")
   # Save results of this long run
   output_file <- file.path('output',current_date, paste('all_neighbours_bp', basepairs, '_n', max_neighbors, '.csv', sep = ""))
   write_csv(all.neighbours, output_file)
 
-  fasta_output_file <- file.path('output',current_date, paste('all_neighbours_bp', basepairs, '_n', max_neighbors, '.fasta', sep = ""))
-  data.frame2fasta(all.neighbours, name=c('ID','PIGI','assembly','product'), sequence='seq', output_file = fasta_output_file)
+  #fasta_output_file <- file.path('output',current_date, paste('all_neighbours_bp', basepairs, '_n', max_neighbors, '.fasta', sep = ""))
+  #data.frame2fasta(all.neighbours, name=c('ID','PIGI','assembly','product'), sequence='seq', output_file = fasta_output_file)
   
   return(all.neighbours)
 

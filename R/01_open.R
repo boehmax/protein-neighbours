@@ -34,6 +34,7 @@ read_protein_assembly_data <- function(protein_file = 'proteins.csv',
 #' @export
 read_clades <- function(PATH = 'data', clade_dir = 'clades', pattern = "^[C]") {
   # Load clade information from text files
+  PROTEIN_ALIAS <- read_representatives(PATH = PATH)
   clade_path <- file.path(PATH, clade_dir)
   clade_files <- list.files(clade_path, pattern = pattern, full.names = TRUE)
   
@@ -45,7 +46,7 @@ read_clades <- function(PATH = 'data', clade_dir = 'clades', pattern = "^[C]") {
     
   # Apply the function to each file and clade, then bind rows
   clade_assign <- map2_df(clade_files, LETTERS[1:length(clade_files)], process_clade_file)
-  clade_assign$PIGI <- unlist(flatten(lapply(clade_assign$protein.id, function(i) { protein.alias(i, verbose = FALSE)[1, 1] })))
+  clade_assign$PIGI <- unlist(flatten(lapply(clade_assign$protein.id, function(i) { protein.alias(i, alias = PROTEIN_ALIAS, verbose = FALSE)[1, 1] })))
   
   return(clade_assign)
 }
@@ -117,7 +118,7 @@ read_annotations <- function(current_date, empty_cells = "unknown") {
     }
     
     # Rename columns
-    colnames(annotated_neighbours)[1:3] <- c("COG_NAME", "COG_LETTER","N", "ANNOTATION")
+    colnames(annotated_neighbours)[1:4] <- c("COG_NAME", "COG_LETTER","N", "ANNOTATION")
   } else {
     annotated_neighbours <- NULL
   }

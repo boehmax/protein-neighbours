@@ -21,8 +21,12 @@ source('R/04_plotting.R')
 main <- function(BASEPAIRS = 300, MAX_NEIGHBORS = 15, PATH = 'data', date = NULL) {
   current_date <- format(Sys.Date(), "%Y-%m-%d") 
   # Ask for Running, reloading or exiting while output file path is created
-  output_file <- create_or_validate_output_file_path(basepairs=BASEPAIRS, max_neighbors=MAX_NEIGHBORS, date=date)
+  output_file_neighbours <- create_or_validate_output_file_path(basepairs=BASEPAIRS, max_neighbors=MAX_NEIGHBORS, date=date)
+  if(!is.null(date)){
+    output_file_proteins <- file.path('output', date, 'all_protein_info.csv')}
+  else{output_file_proteins <- file.path('output', current_date, 'all_protein_info.csv')}
   
+
   # Read protein and assembly data
   protein_assembly_data <- read_protein_assembly_data(PATH = PATH)
 
@@ -35,16 +39,21 @@ main <- function(BASEPAIRS = 300, MAX_NEIGHBORS = 15, PATH = 'data', date = NULL
   # Generate protein alias data from files in representative folder
   PROTEIN_ALIAS <- read_representatives(PATH = PATH) 
   
-  
   # Check if the output file exists and if its already present read it
-  if (file.exists(output_file)) {
-    all.neighbours <- read_csv(output_file)
+  if (file.exists(output_file_neighbours)) {
+    all.neighbours <- read_csv(output_file_neighbours)
+    if(file.exists(output_file_proteins)){all.protein <- read_csv(output_file_proteins)}
+    else{all.protein <- collect_all_protein_info(protein.assembly, PATH)}
   } else {
    # Get neighboring proteins
     all.neighbours <- collec_all_neigbour(protein.assembly, BASEPAIRS, MAX_NEIGHBORS, PATH)
+    all.protein <- collect_all_protein_info(protein.assembly, PATH)
+    
    # Save the results
-    write_csv(all.neighbours, output_file)
+    write_csv(all.neighbours, output_file_neighbours)
+    write_csv(all.protein, output_file_proteins)
   }
+  all.all <- rbind(all.neighbours, all.protein)
 
   # Plot the neighbors if a valid protein of interest is provided
   if (is.null(protein_of_interest) || protein_of_interest == "" || !(protein_of_interest %in% PROTEIN_ALIAS$alias)) {
@@ -69,7 +78,7 @@ main <- function(BASEPAIRS = 300, MAX_NEIGHBORS = 15, PATH = 'data', date = NULL
   annotated_neighbours <- read_annotations(current_date)
   
   # Combine and plot
-  combined_df <- combine_and_plot(neighbours_data = all.neighbours, cog_data = cog_neighbours, clade_assign = clades, neighbour_annotations = annotated_neighbours)
+  combined_df <- combine_and_plot(neighbours_data = all.all, cog_data = cog_neighbours, clade_assign = clades, neighbour_annotations = annotated_neighbours)
 
   # Plot data
   plot_neighbours_per_clade(combined_df, exclude_unknown_clade = TRUE, exclude_unknown_cog = TRUE) #more pretty plot without unkown clades and unkown neighbours

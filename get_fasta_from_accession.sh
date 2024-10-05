@@ -61,7 +61,7 @@ while IFS= read -r line; do
   # Replace 'your_command' with the actual command you want to run
   # For example, if you want to use 'efetch' with each line as an ID:
   efetch -db protein -id "$line" -format fasta >> "$output_file" 2>> fasta_download_error.log
-  sleep 0.4  # Add a delay to avoid overwhelming the server
+  sleep 0.34  # Add a delay to avoid overwhelming the server
 
   # Update the progress bar
   ((current_line++))

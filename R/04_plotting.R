@@ -26,11 +26,13 @@ plot_neighbours_per_clade <- function(combined_data, exclude_unknown_clade = FAL
   neighbour_count_per_clade <- prepare_neighbour_count(combined_data, exclude_unknown_clade, exclude_unknown_cog)
   representatives_per_clade <- prepare_representatives(combined_data, exclude_unknown_clade)
   total_neighbours_per_clade <- prepare_total_neighbours(combined_data, exclude_unknown_clade)
-  
+  how_many_neighbours_per_protein <- prepare_neighbour_count_per_protein(combined_data, exclude_unknown_clade, exclude_unknown_cog)
+
   write_csv(neighbour_count_per_clade, file.path(output_path, "neighbour_count_per_clade.csv"))
   write_csv(representatives_per_clade, file.path(output_path, "representatives_per_clade.csv"))
   write_csv(total_neighbours_per_clade, file.path(output_path, "total_neighbours_per_clade.csv"))
-  
+  write_csv(how_many_neighbours_per_protein, file.path(output_path, "how_many_neighbours_per_protein.csv"))
+
   clade_labels <- create_clade_labels(representatives_per_clade)
   plot_height <- calculate_plot_height(neighbour_count_per_clade)
   
@@ -46,10 +48,78 @@ plot_neighbours_per_clade <- function(combined_data, exclude_unknown_clade = FAL
 }
 
 prepare_neighbour_count <- function(data, exclude_unknown_clade, exclude_unknown_cog) {
-  data <- data %>%
-    select(ID, clade, COG_LETTER) %>%
-    distinct()
+  if (exclude_unknown_clade) {
+    data <- data %>% filter(clade != "unknown")
+  }
   
+  if (exclude_unknown_cog) {
+    data <- data %>% filter(COG_LETTER != "unknown")
+  }
+  
+  # Count proteins with distinct COG_LETTER when is.neighbour is TRUE
+neighbours_count <- data %>%
+    filter(is.neighbour == TRUE)%>%
+    count(clade, COG_LETTER, .drop = FALSE) %>%
+    replace_na(list(clade = "unknown", COG_LETTER = "unknown")) 
+
+# Count proteins when is.neighbour is FALSE
+protein_count <- data %>%
+    filter(is.neighbour == FALSE) %>%
+    count(clade, .drop = FALSE) %>%
+    replace_na(list(clade = "unknown"))
+
+# Subtract the counts of proteins with neighbours from the counts of proteins without neighbours
+no_neighbours_count <- protein_count %>%
+    left_join(neighbours_count %>% group_by(clade) %>% summarise(total_neighbours = sum(n)), by = "clade") %>%
+    mutate(n = n - coalesce(total_neighbours, 0)) %>%
+    select(clade, n) %>%
+    mutate(COG_LETTER = "no neighbours")
+
+# Combine the two dataframes
+combined_count <- bind_rows(neighbours_count, no_neighbours_count)
+
+# Select and arrange the columns as required
+final_output <- combined_count %>%
+    select(clade, COG_LETTER, n) %>%
+    arrange(clade, COG_LETTER)%>%
+    mutate(COG_LETTER = as.factor(COG_LETTER))
+
+return(final_output)
+}
+
+prepare_representatives <- function(data, exclude_unknown_clade) {
+  if (exclude_unknown_clade) {
+    data <- data %>% filter(clade != "unknown")
+  }
+
+  data <- data %>%
+    select(ID, clade, COG_LETTER, PIGI) %>%
+    replace_na(list(clade = "unknown")) %>%
+    distinct(PIGI, clade)
+
+  data %>%
+    count(clade, .drop = FALSE) %>%
+    mutate(clade = as.factor(clade))
+}
+
+prepare_total_neighbours <- function(data, exclude_unknown_clade) {
+ 
+  if (exclude_unknown_clade) {
+    data <- data %>% filter(clade != "unknown")
+  }
+
+  data <- data %>%
+    filter(is.neighbour == TRUE) %>%
+    select(ID, clade, COG_LETTER, PIGI) %>%
+    distinct(COG_LETTER, clade)
+  
+  data %>%
+    count(clade, .drop = FALSE) %>%
+    mutate(across(where(is.factor), as.character)) %>%
+    replace_na(list(clade = "unknown"))
+}
+
+prepare_neighbour_count_per_protein <- function(data, exclude_unknown_clade, exclude_unknown_cog) {
   if (exclude_unknown_clade) {
     data <- data %>% filter(clade != "unknown")
   }
@@ -59,39 +129,9 @@ prepare_neighbour_count <- function(data, exclude_unknown_clade, exclude_unknown
   }
   
   data %>%
-    count(clade, COG_LETTER, .drop = FALSE) %>%
-    replace_na(list(clade = "unknown", COG_LETTER = "unknown")) %>%
-    mutate(COG_LETTER = as.factor(COG_LETTER))
-}
-
-prepare_representatives <- function(data, exclude_unknown_clade) {
-  data <- data %>%
-    select(ID, clade, COG_LETTER, PIGI) %>%
+    count(PIGI, clade, .drop = FALSE) %>%
     replace_na(list(clade = "unknown")) %>%
-    distinct(PIGI, clade)
-  
-  if (exclude_unknown_clade) {
-    data <- data %>% filter(clade != "unknown")
-  }
-  
-  data %>%
-    count(clade, .drop = FALSE) %>%
-    mutate(clade = as.factor(clade))
-}
-
-prepare_total_neighbours <- function(data, exclude_unknown_clade) {
-  data <- data %>%
-    select(ID, clade, COG_LETTER, PIGI) %>%
-    distinct(COG_LETTER, clade)
-  
-  if (exclude_unknown_clade) {
-    data <- data %>% filter(clade != "unknown")
-  }
-  
-  data %>%
-    count(clade, .drop = FALSE) %>%
-    mutate(across(where(is.factor), as.character)) %>%
-    replace_na(list(clade = "unknown"))
+    mutate(n = n - 1)
 }
 
 create_clade_labels <- function(representatives) {
