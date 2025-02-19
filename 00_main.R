@@ -121,4 +121,4 @@ main <- function(BASEPAIRS = 300, MAX_NEIGHBORS = 15, PATH = 'data', date = NULL
   
   }
 
-#main()
+#main(BASEPAIRS = 300, MAX_NEIGHBORS = 15, PATH = 'data')
