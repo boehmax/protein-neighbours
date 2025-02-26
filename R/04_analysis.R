@@ -118,67 +118,129 @@ combine_and_plot <- function(neighbours_data, cog_data, clade_assign, neighbour_
   
   pn_info("Combining data from multiple sources")
   
-  # Merge the fasta and the clade assignment
+  # Check if data frames exist and have necessary columns
+  if (is.null(neighbours_data) || nrow(neighbours_data) == 0) {
+    pn_error("No neighbor data provided")
+    return(data.frame())
+  }
+  
+  # Ensure ID column exists for joining
+  if (!"ID" %in% colnames(neighbours_data)) {
+    pn_error("ID column missing from neighbors_data")
+    pn_info("Available columns:", paste(colnames(neighbours_data), collapse=", "))
+    return(neighbours_data)
+  }
+  
+  # Merge the data with the clade assignment
   if (is.null(clade_assign) || nrow(clade_assign) == 0) {
     pn_warn("No clade assignment found. Using 'unknown' for all clades.")
     neighbours_with_clades <- neighbours_data %>%
       dplyr::mutate(clade = 'unknown')
   } else {
-    # Merge the clade assignment
-    pn_info("Merging clade assignments")
-    neighbours_with_clades <- neighbours_data %>%
-      dplyr::left_join(clade_assign, by = 'PIGI') %>%
-      tidyr::replace_na(list(clade = 'unknown'))
-    
-    pn_info("Merged", nrow(clade_assign), "clade assignments with", 
-           nrow(neighbours_data), "neighbor records")
+    # Check if PIGI column exists in both dataframes
+    if (!"PIGI" %in% colnames(neighbours_data)) {
+      pn_warn("PIGI column missing from neighbors_data. Cannot join with clade data.")
+      neighbours_with_clades <- neighbours_data %>%
+        dplyr::mutate(clade = 'unknown')
+    } else if (!"PIGI" %in% colnames(clade_assign)) {
+      pn_warn("PIGI column missing from clade_assign. Cannot join with neighbor data.")
+      neighbours_with_clades <- neighbours_data %>%
+        dplyr::mutate(clade = 'unknown')
+    } else {
+      # Merge the clade assignment
+      pn_info("Merging clade assignments")
+      neighbours_with_clades <- neighbours_data %>%
+        dplyr::left_join(clade_assign, by = 'PIGI') %>%
+        tidyr::replace_na(list(clade = 'unknown'))
+      
+      pn_info("Merged", nrow(clade_assign), "clade assignments with", 
+              nrow(neighbours_data), "neighbor records")
+    }
   }
-
-  # Combine all information into one data frame if possible
+  
+  # Combine all information into one dataframe if possible
   if (is.null(cog_data) || nrow(cog_data) == 0) {
     pn_warn("No additional COG data found. Using default values.")
     combined_data <- neighbours_with_clades %>%
       dplyr::mutate(COG_ID = NA,
-               CDD_ID = NA,
-               EVALUE = NA,
-               GENE_NAME = NA,
-               COG_NAME = 'unknown',
-               COG_LETTER = 'unknown',
-               COG_DESCRIPTION = 'unknown'
+                    CDD_ID = NA,
+                    EVALUE = NA,
+                    GENE_NAME = NA,
+                    COG_NAME = 'unknown',
+                    COG_LETTER = 'unknown',
+                    COG_DESCRIPTION = 'unknown'
       )
   } else {
-    # Merge the COG data
-    pn_info("Merging COG annotation data")
-    combined_data <- neighbours_with_clades %>%
-      dplyr::left_join(cog_data, by = c("ID" = "QUERY_ID")) %>%
-      tidyr::replace_na(list(COG_ID = NA,
-                        CDD_ID = NA,
-                        EVALUE = NA,
-                        GENE_NAME = NA,
-                        COG_NAME = 'unknown',
-                        COG_LETTER = 'unknown',
-                        COG_DESCRIPTION = 'unknown'
-      ))
+    # Check column names in cog_data
+    pn_info("COG data columns:", paste(colnames(cog_data), collapse=", "))
     
-    pn_info("Merged", nrow(cog_data), "COG annotations")
+    # Determine the correct join column in cog_data
+    join_col <- NULL
+    if ("QUERY_ID" %in% colnames(cog_data)) {
+      join_col <- "QUERY_ID"
+    } else if ("query" %in% colnames(cog_data)) {
+      join_col <- "query"
+    } else {
+      pn_warn("Neither QUERY_ID nor query column found in cog_data. Cannot join.")
+      combined_data <- neighbours_with_clades %>%
+        dplyr::mutate(COG_ID = NA,
+                      CDD_ID = NA,
+                      EVALUE = NA,
+                      GENE_NAME = NA,
+                      COG_NAME = 'unknown',
+                      COG_LETTER = 'unknown',
+                      COG_DESCRIPTION = 'unknown'
+        )
+    }
+    
+    if (!is.null(join_col)) {
+      # Merge the COG data
+      pn_info("Merging COG annotation data")
+      pn_info("Joining on", "ID from neighbors_data and", join_col, "from cog_data")
+      
+      # Use distinct to avoid duplicate rows (many-to-many relationship warning)
+      distinct_cog_data <- cog_data %>% dplyr::distinct(!!as.name(join_col), .keep_all = TRUE)
+      
+      combined_data <- neighbours_with_clades %>%
+        dplyr::left_join(distinct_cog_data, by = c("ID" = join_col)) %>%
+        tidyr::replace_na(list(COG_ID = NA,
+                               CDD_ID = NA,
+                               EVALUE = NA,
+                               GENE_NAME = NA,
+                               COG_NAME = 'unknown',
+                               COG_LETTER = 'unknown',
+                               COG_DESCRIPTION = 'unknown'
+        ))
+      
+      pn_info("Merged", nrow(distinct_cog_data), "COG annotations")
+    }
   } 
-
+  
   # Add manual annotations if available
   if (!is.null(neighbour_annotations) && nrow(neighbour_annotations) > 0) {
     pn_info("Adding manual neighbor annotations")
-    combined_data <- combined_data %>%
-      dplyr::left_join(neighbour_annotations %>% 
-                   dplyr::select(COG_NAME, ANNOTATION), by = "COG_NAME") %>%
-      tidyr::replace_na(list(ANNOTATION = 'unknown'))
     
-    pn_info("Added", nrow(neighbour_annotations), "manual annotations")
+    # Check if COG_NAME exists in both dataframes
+    if (!"COG_NAME" %in% colnames(combined_data)) {
+      pn_warn("COG_NAME column missing from combined_data. Cannot add manual annotations.")
+    } else if (!"COG_NAME" %in% colnames(neighbour_annotations)) {
+      pn_warn("COG_NAME column missing from neighbour_annotations. Cannot add manual annotations.")
+    } else {
+      # Add manual annotations
+      combined_data <- combined_data %>%
+        dplyr::left_join(neighbour_annotations %>% 
+                           dplyr::select(COG_NAME, ANNOTATION), by = "COG_NAME") %>%
+        tidyr::replace_na(list(ANNOTATION = 'unknown'))
+      
+      pn_info("Added", nrow(neighbour_annotations), "manual annotations")
+    }
   }
-
+  
   # Write the combined data to a CSV file
   output_file <- file.path(output_dir, "combined_df_all_neighbours_assigned.csv")
   readr::write_csv(combined_data, output_file)
   pn_info("Saved combined data to:", output_file)
-
+  
   return(combined_data)
 }
 
