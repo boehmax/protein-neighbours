@@ -264,3 +264,56 @@ pn_error <- function(...) {
 pn_debug <- function(...) {
   pn_log_message("DEBUG", ...)
 }
+
+# Find the script path properly and make it executable
+
+#' Get the path to a script file
+#'
+#' This function finds the path to a script file, trying multiple locations.
+#'
+#' @param script_name The name of the script file
+#' @param default_locations Additional locations to check
+#' @return The full path to the script file, or NULL if not found
+#' @keywords internal
+find_script <- function(script_name, default_locations = c()) {
+  # First, check if it's in the package's scripts directory
+  script_path <- NULL
+  
+  # Try system.file first (works when installed as a package)
+  potential_path <- system.file("scripts", script_name, package = "proteinNeighbours")
+  if (file.exists(potential_path)) {
+    script_path <- potential_path
+  }
+  
+  # Try relative to the current directory (development mode)
+  if (is.null(script_path)) {
+    potential_paths <- c(
+      file.path("inst", "scripts", script_name),
+      file.path("scripts", script_name),
+      script_name
+    )
+    
+    # Add any additional locations
+    potential_paths <- c(potential_paths, file.path(default_locations, script_name))
+    
+    # Check each potential path
+    for (path in potential_paths) {
+      if (file.exists(path)) {
+        script_path <- normalizePath(path)
+        break
+      }
+    }
+  }
+  
+  if (is.null(script_path)) {
+    warning("Could not find script: ", script_name)
+    return(NULL)
+  }
+  
+  # Make the script executable if it's not already
+  if (.Platform$OS.type != "windows") {
+    system(paste("chmod +x", shQuote(script_path)))
+  }
+  
+  return(script_path)
+}

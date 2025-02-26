@@ -2,9 +2,9 @@
 
 # Input/Output settings
 paths:
-  base_dir: "hcp_data"                    # Base directory for input files
+  base_dir: "data/hcp_data"                    # Base directory for input files
   output_dir: "output"                # Directory for output files
-  ncbi_dataset: "hcp_data/ncbi_dataset"   # Path to NCBI dataset directory
+  ncbi_dataset: "data/hcp_data/ncbi_dataset"   # Path to NCBI dataset directory
 
 # Input files
 files:
@@ -27,9 +27,9 @@ analysis:
 
 # Annotation settings
 annotation:
-  tool: "eggnog"                     # Tool to use for annotation: "eggnog" or "cog"
+  tool: "eggnog"                     # Tool to use for annotation: "eggnog" or "cog" or "dummy"
   eggnog:
-    db_dir: "data/eggnog_db"         # Path to eggNOG database
+    db_dir: "/home/max-boehm/bioinformatics/eggnog-mapper/data"         # Path to eggNOG database
     cpu: 4                           # Number of CPUs to use
     temp_dir: "tmp"                  # Temporary directory
     tax_scope: "auto"                # Taxonomic scope for annotation
