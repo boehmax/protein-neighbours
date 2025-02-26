@@ -317,3 +317,12 @@ find_script <- function(script_name, default_locations = c()) {
   
   return(script_path)
 }
+
+#' Rounding function
+#'
+#' @param x The number to be rounded.
+#' @param accuracy The accuracy to which the number should be rounded.
+#' @param f The rounding function to use (default is round).
+#' @return The rounded number.
+#' @export
+round_any <- function(x, accuracy, f=round){f(x/ accuracy) * accuracy}

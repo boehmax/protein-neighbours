@@ -35,9 +35,9 @@ amount_of_neighbours <- function(cog_data, output_dir = NULL) {
     return(NULL)
   }
   
-  # Check if COG_NAME and COG_LETTER columns exist
-  if (!all(c("COG_NAME", "COG_LETTER") %in% colnames(cog_data))) {
-    pn_warn("Required columns (COG_NAME, COG_LETTER) not found in COG data.")
+  # Check if Description and COG_category columns exist
+  if (!all(c("Description", "COG_category") %in% colnames(cog_data))) {
+    pn_warn("Required columns (Description, COG_category) not found in COG data.")
     pn_warn("Available columns:", paste(colnames(cog_data), collapse = ", "))
     return(NULL)
   }
@@ -45,8 +45,8 @@ amount_of_neighbours <- function(cog_data, output_dir = NULL) {
   # Calculate types of neighbors and their counts
   tryCatch({
     types_of_neighbours <- cog_data %>%
-      dplyr::select(COG_NAME, COG_LETTER) %>%
-      dplyr::add_count(COG_NAME) %>%
+      dplyr::select(Description, COG_category) %>%
+      dplyr::add_count(Description) %>%
       dplyr::arrange(dplyr::desc(n)) %>%
       unique()
     
@@ -61,10 +61,10 @@ amount_of_neighbours <- function(cog_data, output_dir = NULL) {
     
     tryCatch({
       p <- ggplot2::ggplot(plot_data, 
-                        ggplot2::aes(x = reorder(COG_LETTER, -n), y = n)) +
+                        ggplot2::aes(x = reorder(Description, -n), y = n)) +
         ggplot2::geom_bar(stat = "identity") +
         ggplot2::labs(title = "Types of Neighbors by COG Category",
-                  x = "COG Category",
+                  x = "Descritption",
                   y = "Count") +
         ggplot2::theme_minimal() +
         ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1))
@@ -167,7 +167,7 @@ combine_and_plot <- function(neighbours_data, cog_data, clade_assign, neighbour_
                     EVALUE = NA,
                     GENE_NAME = NA,
                     COG_NAME = 'unknown',
-                    COG_LETTER = 'unknown',
+                    COG_category = 'unknown',
                     COG_DESCRIPTION = 'unknown'
       )
   } else {
@@ -188,7 +188,7 @@ combine_and_plot <- function(neighbours_data, cog_data, clade_assign, neighbour_
                       EVALUE = NA,
                       GENE_NAME = NA,
                       COG_NAME = 'unknown',
-                      COG_LETTER = 'unknown',
+                      COG_category = 'unknown',
                       COG_DESCRIPTION = 'unknown'
         )
     }
@@ -208,7 +208,7 @@ combine_and_plot <- function(neighbours_data, cog_data, clade_assign, neighbour_
                                EVALUE = NA,
                                GENE_NAME = NA,
                                COG_NAME = 'unknown',
-                               COG_LETTER = 'unknown',
+                               COG_category = 'unknown',
                                COG_DESCRIPTION = 'unknown'
         ))
       
@@ -363,7 +363,7 @@ generate_summary_statistics <- function(combined_data, output_dir = NULL) {
     results$total_neighbors <- nrow(combined_data %>% 
                                    dplyr::filter(is.neighbour))
     
-    results$unique_neighbor_types <- length(unique(combined_data$COG_LETTER))
+    results$unique_neighbor_types <- length(unique(combined_data$COG_category))
     
     results$clades <- unique(combined_data$clade)
     results$clade_counts <- combined_data %>%
@@ -386,7 +386,7 @@ generate_summary_statistics <- function(combined_data, output_dir = NULL) {
     # Neighbor type distribution
     results$neighbor_type_dist <- combined_data %>%
       dplyr::filter(is.neighbour) %>%
-      dplyr::count(COG_LETTER, sort = TRUE)
+      dplyr::count(COG_category, sort = TRUE)
     
     # Create summary data frame
     summary_df <- data.frame(

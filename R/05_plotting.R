@@ -12,7 +12,7 @@
 #'
 #' @param combined_data A combined data frame with neighbors and clade information.
 #' @param exclude_unknown_clade Logical indicating whether to exclude "unknown" clades. Default is FALSE.
-#' @param exclude_unknown_cog Logical indicating whether to exclude "unknown" COG_LETTER. Default is FALSE.
+#' @param exclude_unknown_cog Logical indicating whether to exclude "unknown" COG_category. Default is FALSE.
 #' @param output_path A string representing the output path. Default is NULL.
 #' @param plot_count_codh Logical indicating whether to plot the count of CODH per clade or count of
 #'        Neighbours per clade. Default is FALSE.
@@ -109,7 +109,7 @@ plot_neighbours_per_clade <- function(combined_data, exclude_unknown_clade = FAL
 #'
 #' @param data A data frame with combined neighbor data.
 #' @param exclude_unknown_clade Logical indicating whether to exclude "unknown" clades.
-#' @param exclude_unknown_cog Logical indicating whether to exclude "unknown" COG_LETTER.
+#' @param exclude_unknown_cog Logical indicating whether to exclude "unknown" COG_category.
 #' @param plot_count_codh Logical indicating whether to plot CODH counts.
 #' @return A data frame with neighbor count data.
 #' @keywords internal
@@ -120,7 +120,7 @@ prepare_neighbour_count <- function(data, exclude_unknown_clade, exclude_unknown
   }
   
   if (exclude_unknown_cog) {
-    data <- data %>% dplyr::filter(COG_LETTER != "unknown")
+    data <- data %>% dplyr::filter(COG_category != "unknown")
   }
   
   if (plot_count_codh) {
@@ -128,11 +128,11 @@ prepare_neighbour_count <- function(data, exclude_unknown_clade, exclude_unknown
     data <- data %>% dplyr::mutate(ID = PIGI)
   }
   
-  # Count proteins with distinct COG_LETTER when is.neighbour is TRUE
+  # Count proteins with distinct COG_category when is.neighbour is TRUE
   neighbours_count <- data %>%
     dplyr::filter(is.neighbour == TRUE) %>%
-    dplyr::count(clade, COG_LETTER, .drop = FALSE) %>%
-    tidyr::replace_na(list(clade = "unknown", COG_LETTER = "unknown"))
+    dplyr::count(clade, COG_category, .drop = FALSE) %>%
+    tidyr::replace_na(list(clade = "unknown", COG_category = "unknown"))
   
   # Count proteins when is.neighbour is FALSE
   protein_count <- data %>%
@@ -147,16 +147,16 @@ prepare_neighbour_count <- function(data, exclude_unknown_clade, exclude_unknown
                   dplyr::summarise(total_neighbours = sum(n)), by = "clade") %>%
     dplyr::mutate(n = n - dplyr::coalesce(total_neighbours, 0)) %>%
     dplyr::select(clade, n) %>%
-    dplyr::mutate(COG_LETTER = "no neighbours")
+    dplyr::mutate(COG_category = "no neighbours")
   
   # Combine the two dataframes
   combined_count <- dplyr::bind_rows(neighbours_count, no_neighbours_count)
   
   # Select and arrange the columns as required
   final_output <- combined_count %>%
-    dplyr::select(clade, COG_LETTER, n) %>%
-    dplyr::arrange(clade, COG_LETTER) %>%
-    dplyr::mutate(COG_LETTER = as.factor(COG_LETTER))
+    dplyr::select(clade, COG_category, n) %>%
+    dplyr::arrange(clade, COG_category) %>%
+    dplyr::mutate(COG_category = as.factor(COG_category))
   
   return(final_output)
 }
@@ -175,7 +175,7 @@ prepare_representatives <- function(data, exclude_unknown_clade) {
   }
   
   data <- data %>%
-    dplyr::select(ID, clade, COG_LETTER, PIGI) %>%
+    dplyr::select(ID, clade, COG_category, PIGI) %>%
     tidyr::replace_na(list(clade = "unknown")) %>%
     dplyr::distinct(PIGI, clade)
   
@@ -199,8 +199,8 @@ prepare_total_neighbours <- function(data, exclude_unknown_clade) {
   
   data <- data %>%
     dplyr::filter(is.neighbour == TRUE) %>%
-    dplyr::select(ID, clade, COG_LETTER, PIGI) %>%
-    dplyr::distinct(COG_LETTER, clade)
+    dplyr::select(ID, clade, COG_category, PIGI) %>%
+    dplyr::distinct(COG_category, clade)
   
   data %>%
     dplyr::count(clade, .drop = FALSE) %>%
@@ -214,7 +214,7 @@ prepare_total_neighbours <- function(data, exclude_unknown_clade) {
 #'
 #' @param data A data frame with combined neighbor data.
 #' @param exclude_unknown_clade Logical indicating whether to exclude "unknown" clades.
-#' @param exclude_unknown_cog Logical indicating whether to exclude "unknown" COG_LETTER.
+#' @param exclude_unknown_cog Logical indicating whether to exclude "unknown" COG_category.
 #' @return A data frame with neighbor counts per protein.
 #' @keywords internal
 prepare_neighbour_count_per_protein <- function(data, exclude_unknown_clade, exclude_unknown_cog) {
@@ -223,7 +223,7 @@ prepare_neighbour_count_per_protein <- function(data, exclude_unknown_clade, exc
   }
   
   if (exclude_unknown_cog) {
-    data <- data %>% dplyr::filter(COG_LETTER != "unknown")
+    data <- data %>% dplyr::filter(COG_category != "unknown")
   }
   
   data %>%
@@ -278,7 +278,7 @@ calculate_plot_height <- function(neighbour_count) {
 #' @keywords internal
 create_plot <- function(neighbour_count, clade_labels, plot_height) {
   p <- ggplot2::ggplot(neighbour_count, 
-                     ggplot2::aes(x = COG_LETTER, y = n, fill = COG_LETTER)) + 
+                     ggplot2::aes(x = COG_category, y = n, fill = COG_category)) + 
     # Add bars with identity statistic, position them side by side, and outline in black
     ggplot2::geom_bar(stat = "identity", position = "dodge", color = "black", width = 1) +
     
@@ -498,7 +498,7 @@ make_correlation_matrix <- function(df, vector, supress_output = FALSE,
 create_clade_histograms2 <- function(fasta_data, 
                                    clade_colors = c("#FFD92F", "#A6D854", "#FC8D62", 
                                                    "#E78AC3", "#8DA0CB", "#66C2A5", 
-                                                   "#56B4E9", "#E5C494", "#B3B3B3"),
+                                                   "#56B4E9", "#E5C494", "#B3B3B3", "pink", "green"),
                                    output_dir = NULL, width = 10, height = 10) {
   pn_info("Creating clade histograms")
   

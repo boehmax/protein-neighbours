@@ -57,6 +57,8 @@ visualization:
     - "#56B4E9"
     - "#E5C494"
     - "#B3B3B3"
+    - "pink"
+    - "green"
   plot_width: 30                     # Width of plots in cm
   plot_height: 15                    # Height of plots in cm
 

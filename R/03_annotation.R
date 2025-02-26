@@ -511,171 +511,197 @@ S	POORLY CHARACTERIZED	Function unknown
     # Check if we have COG categories
     has_cog_categories <- FALSE
     if ("COG_category" %in% colnames(annotations)) {
-      cog_counts <- table(annotations$COG_category)
-      pn_info("COG category distribution:")
-      for (cat in names(cog_counts)) {
-        pn_info("  ", cat, ":", cog_counts[cat])
-      }
+      pn_info("Found COG_category column")
       has_cog_categories <- TRUE
     } else {
       pn_warn("No COG_category column found in eggNOG annotations")
-    }
-    
-    # Initialize classifier results
-    classifier_results <- data.frame(
-      QUERY_ID = character(),
-      COG_ID = character(),
-      CDD_ID = character(),
-      EVALUE = character(),
-      GENE_NAME = character(),
-      COG_NAME = character(),
-      COG_LETTER = character(),
-      COG_DESCRIPTION = character(),
-      stringsAsFactors = FALSE
-    )
-    
-    # Read COG categories for reference
-    cog_cats <- read.delim(cog_categories_file, stringsAsFactors = FALSE)
-    
-    # Process each annotation
-    for (i in 1:nrow(annotations)) {
-      # Get the query ID
-      query_id <- annotations$query[i]
-      
-      # Get COG letters from COG_category column
-      cog_letters <- c()
-      if (has_cog_categories && !is.na(annotations$COG_category[i]) && annotations$COG_category[i] != "-") {
-        cog_letters <- strsplit(annotations$COG_category[i], "")[[1]]
-      }
-      
-      # If no COG category was found, default to S (unknown)
-      if (length(cog_letters) == 0) {
-        cog_letters <- "S"
-      }
-      
-      # Get COG ID from eggNOG_OGs
-      cog_id <- NULL
-      if ("eggNOG_OGs" %in% colnames(annotations) && 
-          !is.na(annotations$eggNOG_OGs[i]) && 
-          annotations$eggNOG_OGs[i] != "-") {
-        ogs <- strsplit(annotations$eggNOG_OGs[i], ",")[[1]]
-        cog_matches <- grep("^COG[0-9]+@", ogs, value = TRUE)
-        if (length(cog_matches) > 0) {
-          cog_id <- sub("@.*$", "", cog_matches[1])
-        }
-      }
-      
-      # If no COG ID was found, generate a random one
-      if (is.null(cog_id)) {
-        cog_id <- paste0("COG", sprintf("%04d", sample(1:9999, 1)))
-      }
-      
-      # Get description
-      description <- "Function unknown"
-      if ("Description" %in% colnames(annotations) && 
-          !is.na(annotations$Description[i]) && 
-          annotations$Description[i] != "-") {
-        description <- annotations$Description[i]
-      }
-      
-      # Get e-value
-      evalue <- "-"
-      if ("evalue" %in% colnames(annotations) && !is.na(annotations$evalue[i])) {
-        evalue <- as.character(annotations$evalue[i])
-      }
-      
-      # Get preferred name
-      gene_name <- "-"
-      if ("Preferred_name" %in% colnames(annotations) && 
-          !is.na(annotations$Preferred_name[i]) && 
-          annotations$Preferred_name[i] != "-") {
-        gene_name <- annotations$Preferred_name[i]
-      }
-      
-      # Create an entry for each COG letter
-      for (letter in cog_letters) {
-        # Find category description
-        cat_idx <- which(cog_cats$COG_LETTER == letter)
-        if (length(cat_idx) > 0) {
-          category <- cog_cats$COG_CATEGORY[cat_idx]
-          
-          # Add to results
-          classifier_results <- rbind(classifier_results, data.frame(
-            QUERY_ID = query_id,
-            COG_ID = cog_id,
-            CDD_ID = "-",
-            EVALUE = evalue,
-            GENE_NAME = gene_name,
-            COG_NAME = category,
-            COG_LETTER = letter,
-            COG_DESCRIPTION = description,
-            stringsAsFactors = FALSE
-          ))
+      # Try alternative column names that might contain COG categories
+      possible_cols <- c("COG_categories", "cog_category", "cog_categories")
+      for (col in possible_cols) {
+        if (col %in% colnames(annotations)) {
+          pn_info(paste("Using", col, "column instead of COG_category"))
+          colnames(annotations)[colnames(annotations) == col] <- "COG_category"
+          has_cog_categories <- TRUE
+          break
         }
       }
     }
     
-    # If no annotations were found, create at least one dummy entry
-    if (nrow(classifier_results) == 0) {
-      pn_warn("No COG annotations could be extracted. Creating a diverse set of dummy annotations.")
-      
-      # Create diverse dummy annotations instead of all S
-      protein_ids <- unique(annotations$query)
-      dummy_results <- create_diverse_dummy_annotations(protein_ids)
-      classifier_results <- dummy_results
+    # Check if we have Description
+    has_description <- FALSE
+    if ("Description" %in% colnames(annotations)) {
+      pn_info("Found Description column")
+      has_description <- TRUE
     } else {
-      pn_info("Successfully extracted", nrow(classifier_results), "COG annotations")
-      
-      # Check for diversity in COG letters
-      cog_letter_counts <- table(classifier_results$COG_LETTER)
-      pn_info("COG letter distribution in processed results:")
-      for (letter in names(cog_letter_counts)) {
-        pn_info("  ", letter, ":", cog_letter_counts[letter])
-      }
-      
-      # If only S is present, create more diverse annotations
-      if (length(cog_letter_counts) == 1 && names(cog_letter_counts)[1] == "S") {
-        pn_warn("Only 'S' (Function unknown) annotations found. Creating more diverse annotations.")
-        protein_ids <- unique(annotations$query)
-        classifier_results <- create_diverse_dummy_annotations(protein_ids)
+      pn_warn("No Description column found in eggNOG annotations")
+      # Try alternative column names that might contain descriptions
+      possible_cols <- c("description", "desc", "protein_description", "product")
+      for (col in possible_cols) {
+        if (col %in% colnames(annotations)) {
+          pn_info(paste("Using", col, "column instead of Description"))
+          colnames(annotations)[colnames(annotations) == col] <- "Description"
+          has_description <- TRUE
+          break
+        }
       }
     }
-    
-    # Write results to file
-    classifier_file <- file.path(output_dir, "classifier_result.tsv")
-    write.table(classifier_results, classifier_file, sep = "\t", row.names = FALSE, quote = FALSE)
-    
-    pn_info("Successfully processed eggNOG annotations into", nrow(classifier_results), "COG classifier entries")
-    
-    return(classifier_results)
-    
-  }, error = function(e) {
-    pn_error("Failed to process eggNOG-mapper output:", e$message)
-    pn_error("Error traceback:", conditionCall(e))
-    
-    # Create more diverse dummy annotations as fallback
-    pn_warn("Creating diverse dummy annotations as fallback")
-    
-    # Try to extract protein IDs from the annotations file
-    protein_ids <- tryCatch({
-      # Get protein IDs from header lines
-      lines <- readLines(annotations_file)
-      data_lines <- lines[!grepl("^#", lines)]
-      
-      if (length(data_lines) > 0) {
-        # Extract first column (query ID)
-        unique(sapply(strsplit(data_lines, "\t"), function(x) x[1]))
-      } else {
-        c("dummy1", "dummy2", "dummy3")  # Fallback
-      }
-    }, error = function(e2) {
-      c("dummy1", "dummy2", "dummy3")  # Fallback
-    })
-    
-    # Create diverse dummy annotations
-    classifier_results <- create_diverse_dummy_annotations(protein_ids)
-    
+#    
+#    # Initialize classifier results
+#    classifier_results <- data.frame(
+#      QUERY_ID = character(),
+#      COG_ID = character(),
+#      CDD_ID = character(),
+#      EVALUE = character(),
+#      GENE_NAME = character(),
+#      COG_NAME = character(),
+#      COG_LETTER = character(),
+#      COG_DESCRIPTION = character(),
+#      stringsAsFactors = FALSE
+#    )
+#    
+#    # Read COG categories for reference
+#    cog_cats <- read.delim(cog_categories_file, stringsAsFactors = FALSE)
+#    
+#    # Process each annotation
+#    for (i in 1:nrow(annotations)) {
+#      # Get the query ID
+#      query_id <- annotations$query[i]
+#      
+#      # Get COG letters from COG_category column
+#      cog_letters <- c()
+#      if (has_cog_categories && !is.na(annotations$COG_category[i]) && annotations$COG_category[i] != "-") {
+#        cog_letters <- strsplit(annotations$COG_category[i], "")[[1]]
+#      }
+#      
+#      # If no COG category was found, default to S (unknown)
+#      if (length(cog_letters) == 0) {
+#        cog_letters <- "S"
+#      }
+#      
+#      # Get COG ID from eggNOG_OGs
+#      cog_id <- NULL
+#      if ("eggNOG_OGs" %in% colnames(annotations) && 
+#          !is.na(annotations$eggNOG_OGs[i]) && 
+#          annotations$eggNOG_OGs[i] != "-") {
+#        ogs <- strsplit(annotations$eggNOG_OGs[i], ",")[[1]]
+#        cog_matches <- grep("^COG[0-9]+@", ogs, value = TRUE)
+#        if (length(cog_matches) > 0) {
+#          cog_id <- sub("@.*$", "", cog_matches[1])
+#        }
+#      }
+#      
+#      # If no COG ID was found place as NA
+#      if (is.null(cog_id)) {
+#        cog_id <- NA
+#      }
+#      
+#      # Get description
+#      description <- "Function unknown"
+#      if ("Description" %in% colnames(annotations) && 
+#          !is.na(annotations$Description[i]) && 
+#          annotations$Description[i] != "-") {
+#        description <- annotations$Description[i]
+#      }
+#      
+#      # Get e-value
+#      evalue <- "-"
+#      if ("evalue" %in% colnames(annotations) && !is.na(annotations$evalue[i])) {
+#        evalue <- annotations$evalue[i]
+#      }
+#      
+#      # Get preferred name
+#      gene_name <- "-"
+#      if ("Preferred_name" %in% colnames(annotations) && 
+#          !is.na(annotations$Preferred_name[i]) && 
+#          annotations$Preferred_name[i] != "-") {
+#        gene_name <- annotations$Preferred_name[i]
+#      }
+#      
+#      # Create an entry for each COG letter
+#      for (letter in cog_letters) {
+#        # Find category description
+#        cat_idx <- which(cog_cats$COG_LETTER == letter)
+#        if (length(cat_idx) > 0) {
+#          category <- cog_cats$COG_CATEGORY[cat_idx]
+#          
+#          # Add to results
+#          classifier_results <- rbind(classifier_results, data.frame(
+#            QUERY_ID = query_id,
+#            COG_ID = cog_id,
+#            CDD_ID = "-",
+#            EVALUE = evalue,
+#            GENE_NAME = gene_name,
+#            COG_NAME = category,
+#            COG_LETTER = letter,
+#            COG_DESCRIPTION = description,
+#            stringsAsFactors = FALSE
+#          ))
+#        }
+#      }
+#    }
+#    
+#    # If no annotations were found, create at least one dummy entry
+#    if (nrow(classifier_results) == 0) {
+#      pn_warn("No COG annotations could be extracted. Creating a diverse set of dummy annotations.")
+#      
+#      # Create diverse dummy annotations instead of all S
+#      protein_ids <- unique(annotations$query)
+#      dummy_results <- create_diverse_dummy_annotations(protein_ids)
+#      classifier_results <- dummy_results
+#    } else {
+#      pn_info("Successfully extracted", nrow(classifier_results), "COG annotations")
+#      
+#      # Check for diversity in COG letters
+#      cog_letter_counts <- table(classifier_results$COG_LETTER)
+#      pn_info("COG letter distribution in processed results:")
+#      for (letter in names(cog_letter_counts)) {
+#        pn_info("  ", letter, ":", cog_letter_counts[letter])
+#      }
+#      
+#      # If only S is present, create more diverse annotations
+#      if (length(cog_letter_counts) == 1 && names(cog_letter_counts)[1] == "S") {
+#        pn_warn("Only 'S' (Function unknown) annotations found. Creating more diverse annotations.")
+#        protein_ids <- unique(annotations$query)
+#        classifier_results <- create_diverse_dummy_annotations(protein_ids)
+#      }
+#    }
+#    
+#    # Write results to file
+#    classifier_file <- file.path(output_dir, "classifier_result.tsv")
+#    write.table(classifier_results, classifier_file, sep = "\t", row.names = FALSE, quote = FALSE)
+#    
+#    pn_info("Successfully processed eggNOG annotations into", nrow(classifier_results), "COG classifier entries")
+#    
+#  
+#    
+#    return(classifier_results)
+#    
+#  }, error = function(e) {
+#    pn_error("Failed to process eggNOG-mapper output:", e$message)
+#    pn_error("Error traceback:", conditionCall(e))
+#    
+#    # Create more diverse dummy annotations as fallback
+#    pn_warn("Creating diverse dummy annotations as fallback")
+#    
+#    # Try to extract protein IDs from the annotations file
+#    protein_ids <- tryCatch({
+#      # Get protein IDs from header lines
+#      lines <- readLines(annotations_file)
+#      data_lines <- lines[!grepl("^#", lines)]
+#      
+#      if (length(data_lines) > 0) {
+#        # Extract first column (query ID)
+#        unique(sapply(strsplit(data_lines, "\t"), function(x) x[1]))
+#      } else {
+#        c("dummy1", "dummy2", "dummy3")  # Fallback
+#      }
+#    }, error = function(e2) {
+#      c("dummy1", "dummy2", "dummy3")  # Fallback
+#    })
+#    
+#    
     # Write to file
+    classifier_results <- annotations
     classifier_file <- file.path(output_dir, "classifier_result.tsv")
     write.table(classifier_results, classifier_file, sep = "\t", row.names = FALSE, quote = FALSE)
     

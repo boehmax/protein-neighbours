@@ -8,6 +8,7 @@
 
 # Load required libraries
 library(tidyverse)
+library(svglite)
 library(ape)
 library(dplyr)
 library(gggenes)
