@@ -99,59 +99,14 @@ save_config <- function(config, output_dir) {
   yaml::write_yaml(config, file.path(output_dir, "analysis_config.yaml"))
 }
 
-#' Setup logging for the analysis
-#'
-#' This function sets up logging for the analysis.
-#'
-#' @param config The configuration list
-#' @return The configured logger
-#' @importFrom logger log_levels log_threshold log_formatter log_appender
-#' @keywords internal
-setup_logging <- function(config) {
-  # Check if logger package is installed
-  if (!requireNamespace("logger", quietly = TRUE)) {
-    warning("Package 'logger' is needed for logging. Basic logging will be used instead.")
-    return(NULL)
-  }
-  
-  # Set log level
-  level <- config$logging$level
-  logger::log_threshold(logger::log_levels[[level]])
-  
-  # Set log format
-  logger::log_formatter(formatter_with_timestamp)
-  
-  # Set log file
-  log_file <- file.path(config$paths$output_dir, config$analysis$date, config$logging$file)
-  logger::log_appender(logger::appender_file(log_file))
-  
-  # Log the start of the analysis
-  logger::log_info("Starting protein neighborhood analysis")
-  logger::log_info(paste("Configuration loaded from:", config))
-  
-  return(logger)
-}
-
-#' Custom log formatter with timestamp
-#'
-#' @param level Log level
-#' @param msg Log message
-#' @return Formatted log message
-#' @keywords internal
-formatter_with_timestamp <- function(level, msg) {
-  paste0(
-    format(Sys.time(), "%Y-%m-%d %H:%M:%S"), " [", level, "] ", msg
-  )
-}
-
 #' Log input file information for reproducibility
 #'
 #' This function logs information about input files for reproducibility.
 #'
 #' @param config The configuration list
-#' @importFrom logger log_info
+#' @return A data frame with input file information
 #' @export
-log_input_files <- function(config) {
+pn_input_files <- function(config) {
   # Create a summary data frame for input files
   input_files <- c(
     file.path(config$paths$base_dir, config$files$proteins),
@@ -160,19 +115,22 @@ log_input_files <- function(config) {
   )
   
   # Add representative files if they exist
-  rep_files <- c(
-    file.path(config$paths$base_dir, config$files$representative_files$ipg),
-    file.path(config$paths$base_dir, config$files$representative_files$pdb),
-    file.path(config$paths$base_dir, config$files$representative_files$cluster)
-  )
-  input_files <- c(input_files, rep_files)
+  if (!is.null(config$files$representative_files)) {
+    rep_files <- c(
+      file.path(config$paths$base_dir, config$files$representative_files$ipg),
+      file.path(config$paths$base_dir, config$files$representative_files$pdb),
+      file.path(config$paths$base_dir, config$files$representative_files$cluster)
+    )
+    input_files <- c(input_files, rep_files)
+  }
   
   # Get file information
   file_info <- data.frame(
     File = input_files,
     Exists = file.exists(input_files),
     Size_bytes = sapply(input_files, function(f) ifelse(file.exists(f), file.size(f), NA)),
-    Modified = sapply(input_files, function(f) ifelse(file.exists(f), format(file.mtime(f), "%Y-%m-%d %H:%M:%S"), NA)),
+    Modified = sapply(input_files, function(f) ifelse(file.exists(f), 
+                                                      format(file.mtime(f), "%Y-%m-%d %H:%M:%S"), NA)),
     stringsAsFactors = FALSE
   )
   
@@ -190,17 +148,119 @@ log_input_files <- function(config) {
   write.csv(file_info, file.path(output_dir, "input_file_info.csv"), row.names = FALSE)
   
   # Log file information
-  if (requireNamespace("logger", quietly = TRUE)) {
-    logger::log_info("Input file information saved to input_file_info.csv")
-    for (i in 1:nrow(file_info)) {
-      if (file_info$Exists[i]) {
-        logger::log_info(sprintf("File: %s, Size: %d bytes, Modified: %s", 
-                                  file_info$File[i], file_info$Size_bytes[i], file_info$Modified[i]))
-      } else {
-        logger::log_warn(sprintf("File not found: %s", file_info$File[i]))
-      }
+  pn_info("Input file information saved to input_file_info.csv")
+  for (i in 1:nrow(file_info)) {
+    if (file_info$Exists[i]) {
+      pn_info(sprintf("File: %s, Size: %d bytes, Modified: %s", 
+                      file_info$File[i], file_info$Size_bytes[i], file_info$Modified[i]))
+    } else {
+      pn_warn(sprintf("File not found: %s", file_info$File[i]))
     }
   }
   
   return(file_info)
+}
+
+#' Set up standalone logging
+#'
+#' This function sets up a standalone logging system with no external dependencies
+#'
+#' @param config The configuration list
+#' @return The log file path
+#' @export
+pn_setup_logging <- function(config) {
+  # Set output directory
+  output_dir <- file.path(config$paths$output_dir, config$analysis$date)
+  
+  # Create output directory if it doesn't exist
+  if (!dir.exists(output_dir)) {
+    dir.create(output_dir, recursive = TRUE)
+  }
+  
+  # Set log file
+  log_file <- file.path(output_dir, config$logging$file)
+  
+  # Store log level and file as options (not in global environment)
+  options(pn_log_level = toupper(config$logging$level))
+  options(pn_log_file = log_file)
+  
+  # Initialize log file
+  write(paste(format(Sys.time(), "%Y-%m-%d %H:%M:%S"), "[INFO]", 
+              "Starting protein neighborhood analysis"), log_file)
+  write(paste(format(Sys.time(), "%Y-%m-%d %H:%M:%S"), "[INFO]", 
+              "Configuration loaded"), log_file, append = TRUE)
+  
+  # Return log file path
+  message("Logging to: ", log_file)
+  return(log_file)
+}
+
+#' Get the numeric priority of a log level
+#'
+#' @param level The log level string
+#' @return Numeric priority (higher = more severe)
+#' @keywords internal
+pn_log_level_priority <- function(level) {
+  level_priorities <- c("DEBUG" = 1, "INFO" = 2, "WARN" = 3, "WARNING" = 3, 
+                        "ERROR" = 4, "FATAL" = 5)
+  return(level_priorities[toupper(level)])
+}
+
+#' Log a message with a specific level
+#'
+#' @param level The log level (DEBUG, INFO, WARN, ERROR, FATAL)
+#' @param ... The message components to log
+#' @keywords internal
+pn_log_message <- function(level, ...) {
+  # Get current log level from options
+  current_level <- getOption("pn_log_level", "INFO")
+  log_file <- getOption("pn_log_file", NULL)
+  
+  # Check if message should be logged based on level
+  if (pn_log_level_priority(level) >= pn_log_level_priority(current_level)) {
+    # Format the message
+    msg <- paste(..., collapse = " ")
+    timestamp <- format(Sys.time(), "%Y-%m-%d %H:%M:%S")
+    full_msg <- paste(timestamp, "[", level, "]", msg)
+    
+    # Print to console
+    cat(full_msg, "\n")
+    
+    # Write to log file if available
+    if (!is.null(log_file)) {
+      write(full_msg, log_file, append = TRUE)
+    }
+  }
+}
+
+#' Log an info message
+#' 
+#' @param ... The message components to log
+#' @export
+pn_info <- function(...) {
+  pn_log_message("INFO", ...)
+}
+
+#' Log a warning message
+#' 
+#' @param ... The message components to log
+#' @export
+pn_warn <- function(...) {
+  pn_log_message("WARN", ...)
+}
+
+#' Log an error message
+#' 
+#' @param ... The message components to log
+#' @export
+pn_error <- function(...) {
+  pn_log_message("ERROR", ...)
+}
+
+#' Log a debug message
+#' 
+#' @param ... The message components to log
+#' @export
+pn_debug <- function(...) {
+  pn_log_message("DEBUG", ...)
 }

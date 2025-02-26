@@ -63,10 +63,10 @@ protein.alias <- function(protein.id, alias, verbose = FALSE, identi = FALSE) {
     # Print a message indicating the protein was found, if verbose is TRUE
     if (verbose) {
       if (identi) {
-        log_info(paste0("Protein (", protein.id, ") was found in alias database, with an identity of ", 
+        pn_info(paste0("Protein (", protein.id, ") was found in alias database, with an identity of ", 
                       percent, " matching ", result, "."))
       } else {
-        log_info(paste0("Protein (", protein.id, ") was found in alias database matching ", result, "."))
+        pn_info(paste0("Protein (", protein.id, ") was found in alias database matching ", result, "."))
       }
     }
     
@@ -75,7 +75,7 @@ protein.alias <- function(protein.id, alias, verbose = FALSE, identi = FALSE) {
   } else {
     # If the protein ID is not in the database, print a message indicating it was not found, if verbose is TRUE
     if (verbose) {
-      log_warn("Protein was not found in alias database:", protein.id)
+      pn_warn("Protein was not found in alias database:", protein.id)
     }
     
     # Return the original protein ID as a data frame
@@ -93,20 +93,20 @@ protein.alias <- function(protein.id, alias, verbose = FALSE, identi = FALSE) {
 #' @export
 getProteinInfoFromGff <- function(input, protein.id) {
   # Inform the user which input is being processed
-  log_debug(paste("Processing input:", input))
+  pn_debug(paste("Processing input:", input))
   
   # Check if the file exists
   if (!file.exists(input)) {
-    log_warn(paste("File not found:", input, "- Skipping this input."))
+    pn_warn(paste("File not found:", input, "- Skipping this input."))
     return(NULL)
   }
   
   # Import GFF file
   tryCatch({
     gffData <- ape::read.gff(input, na.strings = c(".", "?"), GFF3 = TRUE)
-    log_debug("Successfully read GFF file:", input)
+    pn_debug("Successfully read GFF file:", input)
   }, error = function(e) {
-    log_error("Failed to read GFF file:", input, "-", e$message)
+    pn_error("Failed to read GFF file:", input, "-", e$message)
     return(NULL)
   })
   
@@ -119,9 +119,9 @@ getProteinInfoFromGff <- function(input, protein.id) {
   protein_info <- gffData %>% dplyr::filter(ID == protein.id)
   
   if (nrow(protein_info) == 0) {
-    log_warn("Protein ID not found in GFF file:", protein.id)
+    pn_warn("Protein ID not found in GFF file:", protein.id)
   } else {
-    log_debug("Found protein information for:", protein.id)
+    pn_debug("Found protein information for:", protein.id)
   }
   
   return(protein_info)
@@ -136,7 +136,7 @@ getProteinInfoFromGff <- function(input, protein.id) {
 #' @return A data frame with all protein information.
 #' @export
 collect_all_protein_info <- function(protein.assembly, PATH = 'data') {
-  log_info("Collecting information for", nrow(protein.assembly), "proteins")
+  pn_info("Collecting information for", nrow(protein.assembly), "proteins")
   
   # Initialize empty data frame for all protein information
   all.protein.info <- data.frame()
@@ -150,7 +150,7 @@ collect_all_protein_info <- function(protein.assembly, PATH = 'data') {
     # Show progress
     if (i %% progress_step == 0 || i == total_proteins) {
       progress_pct <- round(i / total_proteins * 100)
-      log_info(paste0("Processing protein ", i, " of ", total_proteins, " (", progress_pct, "%)"))
+      pn_info(paste0("Processing protein ", i, " of ", total_proteins, " (", progress_pct, "%)"))
     }
     
     # Construct GFF file path
@@ -161,7 +161,7 @@ collect_all_protein_info <- function(protein.assembly, PATH = 'data') {
     
     # Skip the iteration if pi is NULL
     if (is.null(pi)) {
-      log_warn("Skipping protein", protein.assembly[i, 2], "with assembly", protein.assembly[i, 1])
+      pn_warn("Skipping protein", protein.assembly[i, 2], "with assembly", protein.assembly[i, 1])
       next
     }
     
@@ -183,7 +183,7 @@ collect_all_protein_info <- function(protein.assembly, PATH = 'data') {
   # Save results of this long run
   output_file <- file.path('output', current_date, 'all_protein_info.csv')
   readr::write_csv(all.protein.info, output_file)
-  log_info("Saved protein information to:", output_file)
+  pn_info("Saved protein information to:", output_file)
   
   return(all.protein.info)
 }
@@ -199,7 +199,7 @@ collect_all_protein_info <- function(protein.assembly, PATH = 'data') {
 #' @return A data frame with neighboring proteins.
 #' @export
 getNeighborProteins <- function(gff.df, protein.id, bp = 300, n = 15) {
-  log_debug("Finding neighbors for protein:", protein.id)
+  pn_debug("Finding neighbors for protein:", protein.id)
   
   # Initialize empty data frame for neighbors
   neighbors <- data.frame()
@@ -208,7 +208,7 @@ getNeighborProteins <- function(gff.df, protein.id, bp = 300, n = 15) {
   protein_info <- gff.df %>% dplyr::filter(ID == protein.id)
   
   if (nrow(protein_info) == 0) {
-    log_warn("Protein ID not found in GFF data:", protein.id)
+    pn_warn("Protein ID not found in GFF data:", protein.id)
     return(neighbors)
   }
   
@@ -217,7 +217,7 @@ getNeighborProteins <- function(gff.df, protein.id, bp = 300, n = 15) {
   strand <- protein_info$strand
   seqid <- protein_info$seqid
   
-  log_debug(paste("Protein location: seqid =", seqid, ", start =", start, 
+  pn_debug(paste("Protein location: seqid =", seqid, ", start =", start, 
                 ", end =", end, ", strand =", strand))
   
   # Loop through n upstream and downstream neighbors
@@ -234,7 +234,7 @@ getNeighborProteins <- function(gff.df, protein.id, bp = 300, n = 15) {
       output <- gff.df[condition, ][1, ]
       start <- output$start
       neighbors <- rbind(neighbors, output)
-      log_debug(paste("Found upstream neighbor", i, ":", output$ID))
+      pn_debug(paste("Found upstream neighbor", i, ":", output$ID))
     }
     
     # Define condition for downstream neighbors
@@ -249,11 +249,11 @@ getNeighborProteins <- function(gff.df, protein.id, bp = 300, n = 15) {
       output <- gff.df[condition, ][1, ]
       end <- output$end
       neighbors <- rbind(neighbors, output)
-      log_debug(paste("Found downstream neighbor", i, ":", output$ID))
+      pn_debug(paste("Found downstream neighbor", i, ":", output$ID))
     }
   }
   
-  log_info("Found", nrow(neighbors), "neighbors for protein", protein.id)
+  pn_info("Found", nrow(neighbors), "neighbors for protein", protein.id)
   return(neighbors)
 }
 
@@ -269,20 +269,20 @@ getNeighborProteins <- function(gff.df, protein.id, bp = 300, n = 15) {
 #' @export
 getProteinNeighborsFromGff3 <- function(input, protein.id, basepairs = 300, m = 15) {
   # Inform the user which input is being processed
-  log_info(paste("Processing input:", input))
+  pn_info(paste("Processing input:", input))
   
   # Check if the file exists
   if (!file.exists(input)) {
-    log_warn(paste("File not found:", input, "- Skipping this input."))
+    pn_warn(paste("File not found:", input, "- Skipping this input."))
     return(NULL)
   }
   
   # Import GFF3 file
   tryCatch({
     gffData <- ape::read.gff(input, na.strings = c(".", "?"), GFF3 = TRUE)
-    log_debug("Successfully read GFF file:", input)
+    pn_debug("Successfully read GFF file:", input)
   }, error = function(e) {
-    log_error("Failed to read GFF file:", input, "-", e$message)
+    pn_error("Failed to read GFF file:", input, "-", e$message)
     return(NULL)
   })
   
@@ -308,8 +308,8 @@ getProteinNeighborsFromGff3 <- function(input, protein.id, basepairs = 300, m = 
 #' @return A data frame with all neighbors.
 #' @export
 collect_all_neighbours <- function(protein.assembly, basepairs = 300, max_neighbors = 15, PATH = 'data') {
-  log_info("Collecting neighbors for", nrow(protein.assembly), "proteins")
-  log_info(paste("Parameters: basepairs =", basepairs, ", max_neighbors =", max_neighbors))
+  pn_info("Collecting neighbors for", nrow(protein.assembly), "proteins")
+  pn_info(paste("Parameters: basepairs =", basepairs, ", max_neighbors =", max_neighbors))
   
   # Initialize empty data frame for all neighbors
   all.neighbours <- data.frame()
@@ -323,7 +323,7 @@ collect_all_neighbours <- function(protein.assembly, basepairs = 300, max_neighb
     # Show progress
     if (i %% progress_step == 0 || i == total_proteins) {
       progress_pct <- round(i / total_proteins * 100)
-      log_info(paste0("Processing protein ", i, " of ", total_proteins, " (", progress_pct, "%)"))
+      pn_info(paste0("Processing protein ", i, " of ", total_proteins, " (", progress_pct, "%)"))
     }
     
     # Construct GFF file path
@@ -334,7 +334,7 @@ collect_all_neighbours <- function(protein.assembly, basepairs = 300, max_neighb
     
     # Skip the iteration if np is NULL
     if (is.null(np)) {
-      log_warn("No neighbors found for protein", protein.assembly[i, 2], "with assembly", protein.assembly[i, 1])
+      pn_warn("No neighbors found for protein", protein.assembly[i, 2], "with assembly", protein.assembly[i, 1])
       next
     }
     
@@ -347,9 +347,9 @@ collect_all_neighbours <- function(protein.assembly, basepairs = 300, max_neighb
       
       # Add neighbors to all neighbors data frame
       all.neighbours <- rbind(all.neighbours, np)
-      log_debug(paste("Added", nrow(np), "neighbors for protein", protein.assembly[i, 2]))
+      pn_debug(paste("Added", nrow(np), "neighbors for protein", protein.assembly[i, 2]))
     } else {
-      log_debug(paste("No neighbors found for protein", protein.assembly[i, 2]))
+      pn_debug(paste("No neighbors found for protein", protein.assembly[i, 2]))
     }
   }
   
@@ -363,7 +363,7 @@ collect_all_neighbours <- function(protein.assembly, basepairs = 300, max_neighb
   output_file <- file.path('output', current_date, 
                           paste0('all_neighbours_bp', basepairs, '_n', max_neighbors, '.csv'))
   readr::write_csv(all.neighbours, output_file)
-  log_info("Saved neighbor information to:", output_file)
+  pn_info("Saved neighbor information to:", output_file)
   
   return(all.neighbours)
 }
@@ -394,8 +394,8 @@ concatenate_columns <- function(df, columns_vector, new_column_name = "concatena
 #' @return Invisible NULL, called for side effects.
 #' @export
 data.frame2fasta <- function(df, name_vector, sequence_column = "seq", output_file = "fasta.fasta") {
-  log_info("Converting data frame to FASTA format")
-  log_info(paste("Output file:", output_file))
+  pn_info("Converting data frame to FASTA format")
+  pn_info(paste("Output file:", output_file))
   
   # Generate new df with a name column and a sequence column
   df2 <- concatenate_columns(df, name_vector, new_column_name = "name")
@@ -408,9 +408,9 @@ data.frame2fasta <- function(df, name_vector, sequence_column = "seq", output_fi
   tryCatch({
     fasta_lines <- do.call(rbind, lapply(seq(nrow(df2)), function(i) t(df2[i, ])))
     write.table(fasta_lines, row.names = FALSE, col.names = FALSE, quote = FALSE, file = output_file)
-    log_info("Successfully wrote FASTA file with", nrow(df2), "sequences")
+    pn_info("Successfully wrote FASTA file with", nrow(df2), "sequences")
   }, error = function(e) {
-    log_error("Failed to write FASTA file:", e$message)
+    pn_error("Failed to write FASTA file:", e$message)
   })
   
   return(invisible(NULL))
@@ -429,33 +429,33 @@ data.frame2fasta <- function(df, name_vector, sequence_column = "seq", output_fi
 #' @export
 plot_neighbours <- function(all.neighbours.df, protein.id, output_dir = "output", 
                            width = 20, height = 5) {
-  log_info("Plotting neighbors for protein:", protein.id)
+  pn_info("Plotting neighbors for protein:", protein.id)
   
   # Check if protein_id exists in the neighbors data frame
   if (!(protein.id %in% all.neighbours.df$PIGI)) {
-    log_warn("Protein ID not found in neighbors data frame:", protein.id)
+    pn_warn("Protein ID not found in neighbors data frame:", protein.id)
     return(invisible(NULL))
   }
   
   # Get assembly for given protein id
   assembly <- all.neighbours.df$assembly[all.neighbours.df$PIGI == protein.id][1]
-  log_debug("Using assembly:", assembly)
+  pn_debug("Using assembly:", assembly)
   
   # Construct GFF file path
   gff_file <- file.path('data/ncbi_dataset/data', assembly, 'genomic.gff')
   
   # Check if the GFF file exists
   if (!file.exists(gff_file)) {
-    log_error("GFF file not found:", gff_file)
+    pn_error("GFF file not found:", gff_file)
     return(invisible(NULL))
   }
   
   # Read GFF data
   tryCatch({
     df <- ape::read.gff(gff_file, na.strings = c(".", "?"), GFF3 = TRUE)
-    log_debug("Successfully read GFF file for plotting")
+    pn_debug("Successfully read GFF file for plotting")
   }, error = function(e) {
-    log_error("Failed to read GFF file for plotting:", e$message)
+    pn_error("Failed to read GFF file for plotting:", e$message)
     return(invisible(NULL))
   })
   
@@ -467,7 +467,7 @@ plot_neighbours <- function(all.neighbours.df, protein.id, output_dir = "output"
   # Find the target protein in the GFF data
   target_protein <- df %>% dplyr::filter(ID == protein.id)
   if (nrow(target_protein) == 0) {
-    log_warn("Protein ID not found in GFF file:", protein.id)
+    pn_warn("Protein ID not found in GFF file:", protein.id)
     return(invisible(NULL))
   }
   
@@ -502,10 +502,10 @@ plot_neighbours <- function(all.neighbours.df, protein.id, output_dir = "output"
     # Save the plot
     output_file <- file.path(output_dir, paste0('neighbours_', protein.id, '.png'))
     ggplot2::ggsave(output_file, plot = p, device = "png", width = width, height = height, units = "cm")
-    log_info("Saved neighbor plot to:", output_file)
+    pn_info("Saved neighbor plot to:", output_file)
     
   }, error = function(e) {
-    log_error("Failed to create or save neighbor plot:", e$message)
+    pn_error("Failed to create or save neighbor plot:", e$message)
   })
   
   return(invisible(NULL))

@@ -23,8 +23,8 @@
 plot_neighbours_per_clade <- function(combined_data, exclude_unknown_clade = FALSE, 
                                      exclude_unknown_cog = FALSE, output_path = NULL, 
                                      plot_count_codh = FALSE, width = 30, height = 15) {
-  log_info("Plotting neighbors per clade")
-  log_info(paste("Parameters: exclude_unknown_clade =", exclude_unknown_clade, 
+  pn_info("Plotting neighbors per clade")
+  pn_info(paste("Parameters: exclude_unknown_clade =", exclude_unknown_clade, 
                 ", exclude_unknown_cog =", exclude_unknown_cog,
                 ", plot_count_codh =", plot_count_codh))
   
@@ -72,7 +72,7 @@ plot_neighbours_per_clade <- function(combined_data, exclude_unknown_clade = FAL
     readr::write_csv(total_neighbours, file.path(output_path, "total_neighbours_per_clade.csv"))
     readr::write_csv(neighbours_per_protein, file.path(output_path, "how_many_neighbours_per_protein.csv"))
     
-    log_info("Saved prepared data files to:", output_path)
+    pn_info("Saved prepared data files to:", output_path)
     
     # Create clade labels
     clade_labels <- create_clade_labels(representatives)
@@ -94,11 +94,11 @@ plot_neighbours_per_clade <- function(combined_data, exclude_unknown_clade = FAL
     svg_file <- file.path(output_path, "neighbour_distribution_by_clade.svg")
     save_plot_with_colors(p, svg_file, col_vector, width, height)
     
-    log_info("Saved plots to:", output_path)
+    pn_info("Saved plots to:", output_path)
     return(invisible(NULL))
     
   }, error = function(e) {
-    log_error("Failed to create neighbors per clade plot:", e$message)
+    pn_error("Failed to create neighbors per clade plot:", e$message)
     return(invisible(NULL))
   })
 }
@@ -260,7 +260,7 @@ calculate_plot_height <- function(neighbour_count) {
   
   # Check if plot_height is valid
   if (!is.finite(plot_height) || plot_height <= 0) {
-    log_warn("Calculated plot height is not a finite positive number. Using ggplot2 default.")
+    pn_info("Calculated plot height is not a finite positive number. Using ggplot2 default.")
     plot_height <- NULL
   }
   
@@ -373,7 +373,7 @@ save_plot_with_colors <- function(plot, filename, col_vector, width = 30, height
     )
   )
   
-  log_debug("Saved plot to:", filename)
+  pn_debug("Saved plot to:", filename)
   return(invisible(NULL))
 }
 
@@ -385,11 +385,11 @@ save_plot_with_colors <- function(plot, filename, col_vector, width = 30, height
 #' @return A ggplot object representing the correlation matrix plot.
 #' @export
 plot_correlation_matrix <- function(correlation.matrix) {
-  log_info("Plotting correlation matrix")
+  pn_info("Plotting correlation matrix")
   
   # Check if input is valid
   if (is.null(correlation.matrix) || !is.matrix(correlation.matrix)) {
-    log_error("Invalid correlation matrix provided")
+    pn_error("Invalid correlation matrix provided")
     return(NULL)
   }
   
@@ -415,11 +415,11 @@ plot_correlation_matrix <- function(correlation.matrix) {
       ) +
       ggplot2::ggtitle("Co-occurrence Probability of Clades")
     
-    log_info("Successfully created correlation matrix plot")
+    pn_info("Successfully created correlation matrix plot")
     return(output.p)
     
   }, error = function(e) {
-    log_error("Failed to create correlation matrix plot:", e$message)
+    pn_error("Failed to create correlation matrix plot:", e$message)
     return(NULL)
   })
 }
@@ -438,7 +438,7 @@ plot_correlation_matrix <- function(correlation.matrix) {
 #' @export
 make_correlation_matrix <- function(df, vector, supress_output = FALSE, 
                                    output_dir = NULL, width = 10, height = 10) {
-  log_info("Creating and saving correlation matrix")
+  pn_info("Creating and saving correlation matrix")
   
   # Set output directory
   current_date <- format(Sys.Date(), "%Y-%m-%d")
@@ -453,7 +453,7 @@ make_correlation_matrix <- function(df, vector, supress_output = FALSE,
   correlation.matrix <- calculate_correlation(df, vector)
   
   if (is.null(correlation.matrix)) {
-    log_warn("Failed to calculate correlation matrix")
+    pn_info("Failed to calculate correlation matrix")
     return(NULL)
   }
   
@@ -461,19 +461,19 @@ make_correlation_matrix <- function(df, vector, supress_output = FALSE,
   plot <- plot_correlation_matrix(correlation.matrix)
   
   if (is.null(plot)) {
-    log_warn("Failed to create correlation matrix plot")
+    pn_info("Failed to create correlation matrix plot")
     return(NULL)
   }
   
   # Save plot
   output_file <- file.path(output_dir, 'correlation_matrix.png')
   ggplot2::ggsave(output_file, plot, width = width, height = height, units = "cm")
-  log_info("Saved correlation matrix plot to:", output_file)
+  pn_info("Saved correlation matrix plot to:", output_file)
   
   # Save matrix as CSV
   output_file_csv <- file.path(output_dir, 'correlation_matrix.csv')
   readr::write_csv(as.data.frame(correlation.matrix), output_file_csv)
-  log_info("Saved correlation matrix data to:", output_file_csv)
+  pn_info("Saved correlation matrix data to:", output_file_csv)
   
   # Return plot if not suppressed
   if (supress_output == FALSE) {
@@ -500,7 +500,7 @@ create_clade_histograms2 <- function(fasta_data,
                                                    "#E78AC3", "#8DA0CB", "#66C2A5", 
                                                    "#56B4E9", "#E5C494", "#B3B3B3"),
                                    output_dir = NULL, width = 10, height = 10) {
-  log_info("Creating clade histograms")
+  pn_info("Creating clade histograms")
   
   # Set output directory
   current_date <- format(Sys.Date(), "%Y-%m-%d")
@@ -516,7 +516,7 @@ create_clade_histograms2 <- function(fasta_data,
     fasta_data.matrix <- how_many_clades_per_assembly(fasta_data)
     
     if (is.null(fasta_data.matrix)) {
-      log_warn("Failed to calculate clades per assembly")
+      pn_info("Failed to calculate clades per assembly")
       return(NULL)
     }
     
@@ -554,17 +554,17 @@ create_clade_histograms2 <- function(fasta_data,
     # Save the plot
     output_file <- file.path(output_dir, 'clade_histogram.png')
     ggplot2::ggsave(output_file, clade_histogram, width = width, height = height, units = "cm")
-    log_info("Saved clade histogram to:", output_file)
+    pn_info("Saved clade histogram to:", output_file)
     
     # Save the data
     output_file_csv <- file.path(output_dir, 'clade_histogram_data.csv')
     readr::write_csv(filtered_data, output_file_csv)
-    log_info("Saved clade histogram data to:", output_file_csv)
+    pn_info("Saved clade histogram data to:", output_file_csv)
     
     return(clade_histogram)
     
   }, error = function(e) {
-    log_error("Failed to create clade histograms:", e$message)
+    pn_error("Failed to create clade histograms:", e$message)
     return(NULL)
   })
 }

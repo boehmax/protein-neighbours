@@ -27,18 +27,18 @@ amount_of_neighbours <- function(cog_data, output_dir = NULL) {
     dir.create(output_dir, recursive = TRUE)
   }
   
-  log_info("Analyzing neighbor types and counts")
+  pn_info("Analyzing neighbor types and counts")
   
   # Check if cog_data is valid
   if (is.null(cog_data) || nrow(cog_data) == 0) {
-    log_warn("No COG data provided. Cannot analyze neighbor types.")
+    pn_warn("No COG data provided. Cannot analyze neighbor types.")
     return(NULL)
   }
   
   # Check if COG_NAME and COG_LETTER columns exist
   if (!all(c("COG_NAME", "COG_LETTER") %in% colnames(cog_data))) {
-    log_warn("Required columns (COG_NAME, COG_LETTER) not found in COG data.")
-    log_warn("Available columns:", paste(colnames(cog_data), collapse = ", "))
+    pn_warn("Required columns (COG_NAME, COG_LETTER) not found in COG data.")
+    pn_warn("Available columns:", paste(colnames(cog_data), collapse = ", "))
     return(NULL)
   }
   
@@ -50,13 +50,13 @@ amount_of_neighbours <- function(cog_data, output_dir = NULL) {
       dplyr::arrange(dplyr::desc(n)) %>%
       unique()
     
-    log_info("Identified", nrow(types_of_neighbours), "unique neighbor types")
+    pn_info("Identified", nrow(types_of_neighbours), "unique neighbor types")
     
     # Plot the types of neighbours in a range (top 100)
     plot_data <- types_of_neighbours
     if (nrow(plot_data) > 100) {
       plot_data <- plot_data[1:100, ]
-      log_info("Plotting top 100 neighbor types")
+      pn_info("Plotting top 100 neighbor types")
     }
     
     tryCatch({
@@ -72,15 +72,15 @@ amount_of_neighbours <- function(cog_data, output_dir = NULL) {
       # Save the plot
       output_file <- file.path(output_dir, 'types_of_neighbours.png')
       ggplot2::ggsave(output_file, plot = p, width = 10, height = 8)
-      log_info("Saved neighbor types plot to:", output_file)
+      pn_info("Saved neighbor types plot to:", output_file)
     }, error = function(e) {
-      log_error("Failed to create or save neighbor types plot:", e$message)
+      pn_error("Failed to create or save neighbor types plot:", e$message)
     })
     
     # Save the types of neighbors as CSV
     output_file <- file.path(output_dir, 'types_of_neighbours.csv')
     readr::write_csv(types_of_neighbours, output_file)
-    log_info("Saved neighbor types data to:", output_file)
+    pn_info("Saved neighbor types data to:", output_file)
     
     # Print instructions for manual annotation
     message('Please open the output folder to see the types of neighbours and annotate them as per the instructions in the README.md file (optional)')
@@ -88,7 +88,7 @@ amount_of_neighbours <- function(cog_data, output_dir = NULL) {
     return(types_of_neighbours)
     
   }, error = function(e) {
-    log_error("Failed to analyze neighbor types:", e$message)
+    pn_error("Failed to analyze neighbor types:", e$message)
     return(NULL)
   })
 }
@@ -116,27 +116,27 @@ combine_and_plot <- function(neighbours_data, cog_data, clade_assign, neighbour_
     dir.create(output_dir, recursive = TRUE)
   }
   
-  log_info("Combining data from multiple sources")
+  pn_info("Combining data from multiple sources")
   
   # Merge the fasta and the clade assignment
   if (is.null(clade_assign) || nrow(clade_assign) == 0) {
-    log_warn("No clade assignment found. Using 'unknown' for all clades.")
+    pn_warn("No clade assignment found. Using 'unknown' for all clades.")
     neighbours_with_clades <- neighbours_data %>%
       dplyr::mutate(clade = 'unknown')
   } else {
     # Merge the clade assignment
-    log_info("Merging clade assignments")
+    pn_info("Merging clade assignments")
     neighbours_with_clades <- neighbours_data %>%
       dplyr::left_join(clade_assign, by = 'PIGI') %>%
       tidyr::replace_na(list(clade = 'unknown'))
     
-    log_info("Merged", nrow(clade_assign), "clade assignments with", 
+    pn_info("Merged", nrow(clade_assign), "clade assignments with", 
            nrow(neighbours_data), "neighbor records")
   }
 
   # Combine all information into one data frame if possible
   if (is.null(cog_data) || nrow(cog_data) == 0) {
-    log_warn("No additional COG data found. Using default values.")
+    pn_warn("No additional COG data found. Using default values.")
     combined_data <- neighbours_with_clades %>%
       dplyr::mutate(COG_ID = NA,
                CDD_ID = NA,
@@ -148,7 +148,7 @@ combine_and_plot <- function(neighbours_data, cog_data, clade_assign, neighbour_
       )
   } else {
     # Merge the COG data
-    log_info("Merging COG annotation data")
+    pn_info("Merging COG annotation data")
     combined_data <- neighbours_with_clades %>%
       dplyr::left_join(cog_data, by = c("ID" = "QUERY_ID")) %>%
       tidyr::replace_na(list(COG_ID = NA,
@@ -160,24 +160,24 @@ combine_and_plot <- function(neighbours_data, cog_data, clade_assign, neighbour_
                         COG_DESCRIPTION = 'unknown'
       ))
     
-    log_info("Merged", nrow(cog_data), "COG annotations")
+    pn_info("Merged", nrow(cog_data), "COG annotations")
   } 
 
   # Add manual annotations if available
   if (!is.null(neighbour_annotations) && nrow(neighbour_annotations) > 0) {
-    log_info("Adding manual neighbor annotations")
+    pn_info("Adding manual neighbor annotations")
     combined_data <- combined_data %>%
       dplyr::left_join(neighbour_annotations %>% 
                    dplyr::select(COG_NAME, ANNOTATION), by = "COG_NAME") %>%
       tidyr::replace_na(list(ANNOTATION = 'unknown'))
     
-    log_info("Added", nrow(neighbour_annotations), "manual annotations")
+    pn_info("Added", nrow(neighbour_annotations), "manual annotations")
   }
 
   # Write the combined data to a CSV file
   output_file <- file.path(output_dir, "combined_df_all_neighbours_assigned.csv")
   readr::write_csv(combined_data, output_file)
-  log_info("Saved combined data to:", output_file)
+  pn_info("Saved combined data to:", output_file)
 
   return(combined_data)
 }
@@ -190,11 +190,11 @@ combine_and_plot <- function(neighbours_data, cog_data, clade_assign, neighbour_
 #' @return A data frame with the number of clades per organism.
 #' @export
 how_many_clades_per_assembly <- function(fasta_data) {
-  log_info("Calculating number of clades per assembly")
+  pn_info("Calculating number of clades per assembly")
   
   # Check if required columns exist
   if (!all(c("assembly", "clade") %in% colnames(fasta_data))) {
-    log_error("Required columns (assembly, clade) not found in input data")
+    pn_error("Required columns (assembly, clade) not found in input data")
     return(NULL)
   }
   
@@ -212,12 +212,12 @@ how_many_clades_per_assembly <- function(fasta_data) {
     # Calculate the total for each clade
     assembly.and.clade.matrix$total <- rowSums(assembly.and.clade.matrix)
     
-    log_info("Calculated clade distribution for", nrow(assembly.and.clade.matrix), "assemblies")
+    pn_info("Calculated clade distribution for", nrow(assembly.and.clade.matrix), "assemblies")
     
     return(assembly.and.clade.matrix)
     
   }, error = function(e) {
-    log_error("Failed to calculate clades per assembly:", e$message)
+    pn_error("Failed to calculate clades per assembly:", e$message)
     return(NULL)
   })
 }
@@ -231,7 +231,7 @@ how_many_clades_per_assembly <- function(fasta_data) {
 #' @return A correlation matrix.
 #' @export
 calculate_correlation <- function(df, vector) {
-  log_info("Calculating correlation matrix")
+  pn_info("Calculating correlation matrix")
   
   tryCatch({
     # Create a contingency table
@@ -258,11 +258,11 @@ calculate_correlation <- function(df, vector) {
       }
     }
     
-    log_info("Successfully calculated correlation matrix")
+    pn_info("Successfully calculated correlation matrix")
     return(correlation.matrix)
     
   }, error = function(e) {
-    log_error("Failed to calculate correlation matrix:", e$message)
+    pn_error("Failed to calculate correlation matrix:", e$message)
     return(NULL)
   })
 }
@@ -287,7 +287,7 @@ generate_summary_statistics <- function(combined_data, output_dir = NULL) {
     dir.create(output_dir, recursive = TRUE)
   }
   
-  log_info("Generating summary statistics")
+  pn_info("Generating summary statistics")
   
   # Initialize results list
   results <- list()
@@ -348,7 +348,7 @@ generate_summary_statistics <- function(combined_data, output_dir = NULL) {
     # Save summary statistics
     output_file <- file.path(output_dir, "summary_statistics.csv")
     readr::write_csv(summary_df, output_file)
-    log_info("Saved summary statistics to:", output_file)
+    pn_info("Saved summary statistics to:", output_file)
     
     # Save detailed statistics
     output_file <- file.path(output_dir, "clade_distribution.csv")
@@ -360,11 +360,11 @@ generate_summary_statistics <- function(combined_data, output_dir = NULL) {
     output_file <- file.path(output_dir, "neighbor_type_distribution.csv")
     readr::write_csv(results$neighbor_type_dist, output_file)
     
-    log_info("Successfully generated summary statistics")
+    pn_info("Successfully generated summary statistics")
     return(results)
     
   }, error = function(e) {
-    log_error("Failed to generate summary statistics:", e$message)
+    pn_error("Failed to generate summary statistics:", e$message)
     return(NULL)
   })
 }

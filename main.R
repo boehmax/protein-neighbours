@@ -34,14 +34,14 @@ main <- function(config_file = "config/config.yaml", override_params = NULL) {
   config <- load_config(config_file, override_params)
   
   # Set up logging
-  setup_logging(config)
+  pn_setup_logging(config)
   
   # Log start of analysis and input file information
-  log_info("Starting protein neighborhood analysis")
-  log_info(paste("Using configuration file:", config_file))
+  pn_info("Starting protein neighborhood analysis")
+  pn_info(paste("Using configuration file:", config_file))
   
   # Log input file information for reproducibility
-  input_file_info <- log_input_files(config)
+  input_file_info <- pn_input_files(config)
   
   # Create output directory for the current date
   current_date <- config$analysis$date
@@ -62,7 +62,7 @@ main <- function(config_file = "config/config.yaml", override_params = NULL) {
   output_file_proteins <- file.path(output_dir, 'all_protein_info.csv')
   
   # Read protein and assembly data
-  log_info("Reading protein and assembly data")
+  pn_info("Reading protein and assembly data")
   protein_assembly_data <- read_protein_assembly_data(
     protein_file = config$files$proteins,
     assembly_file = config$files$assemblies,
@@ -77,7 +77,7 @@ main <- function(config_file = "config/config.yaml", override_params = NULL) {
   protein_assembly <- protein_assembly_data$protein_assembly
   
   # Generate protein alias data from files in representative folder
-  log_info("Reading protein representatives")
+  pn_info("Reading protein representatives")
   PROTEIN_ALIAS <- read_representatives(
     PATH = config$paths$base_dir,
     path = dirname(config$files$representative_files$ipg),
@@ -88,19 +88,19 @@ main <- function(config_file = "config/config.yaml", override_params = NULL) {
   
   # Check if the output files exist and if they're already present, read them
   if (file.exists(output_file_neighbours)) {
-    log_info("Reading existing neighbor data from file")
+    pn_info("Reading existing neighbor data from file")
     all_neighbours <- read_csv(output_file_neighbours)
     
     if(file.exists(output_file_proteins)) {
-      log_info("Reading existing protein data from file")
+      pn_info("Reading existing protein data from file")
       all_protein <- read_csv(output_file_proteins)
     } else {
-      log_info("Collecting protein information")
+      pn_info("Collecting protein information")
       all_protein <- collect_all_protein_info(protein_assembly, PATH = config$paths$base_dir)
     }
   } else {
     # Get neighboring proteins
-    log_info("Collecting neighbor information")
+    pn_info("Collecting neighbor information")
     all_neighbours <- collect_all_neighbours(
       protein_assembly, 
       basepairs = config$analysis$basepairs, 
@@ -108,11 +108,11 @@ main <- function(config_file = "config/config.yaml", override_params = NULL) {
       PATH = config$paths$base_dir
     )
     
-    log_info("Collecting protein information")
+    pn_info("Collecting protein information")
     all_protein <- collect_all_protein_info(protein_assembly, PATH = config$paths$base_dir)
     
     # Save the results
-    log_info("Saving neighbor and protein data")
+    pn_info("Saving neighbor and protein data")
     write_csv(all_neighbours, output_file_neighbours)
     write_csv(all_protein, output_file_proteins)
   }
@@ -122,14 +122,14 @@ main <- function(config_file = "config/config.yaml", override_params = NULL) {
   
   # Plot the neighbors if a valid protein of interest is provided
   if (is.null(protein_of_interest) || protein_of_interest == "" || !(protein_of_interest %in% PROTEIN_ALIAS$alias)) {
-    log_warn('No valid protein of interest given, skipping plotting.')
+    pn_warn('No valid protein of interest given, skipping plotting.')
   } else {
-    log_info(paste("Plotting neighbors for protein:", protein_of_interest))
+    pn_info(paste("Plotting neighbors for protein:", protein_of_interest))
     plot_neighbours(all_neighbours, protein_of_interest)
   }
   
   # Get clade information from text files
-  log_info("Reading clade information")
+  pn_info("Reading clade information")
   clades <- read_clades(
     PATH = config$paths$base_dir,
     clade_dir = config$files$clade_dir,
@@ -137,7 +137,7 @@ main <- function(config_file = "config/config.yaml", override_params = NULL) {
   )
   
   # Annotate proteins using eggNOG or COG
-  log_info("Annotating proteins with", config$annotation$tool)
+  pn_info("Annotating proteins with", config$annotation$tool)
   annotation_results <- analyze_proteins(
     df = all_neighbours, 
     column = 'ID',
@@ -145,15 +145,15 @@ main <- function(config_file = "config/config.yaml", override_params = NULL) {
   )
   
   # Get the types of neighbours and their counts
-  log_info("Analyzing neighbor types")
+  pn_info("Analyzing neighbor types")
   amount_of_neighbours(annotation_results)
   
   # Re-import the types of neighbours after manual annotation if present
-  log_info("Reading any manual annotations")
+  pn_info("Reading any manual annotations")
   annotated_neighbours <- read_annotations(current_date)
   
   # Combine and plot
-  log_info("Combining data and generating plots")
+  pn_info("Combining data and generating plots")
   combined_df <- combine_and_plot(
     neighbours_data = all_data, 
     cog_data = annotation_results, 
@@ -162,7 +162,7 @@ main <- function(config_file = "config/config.yaml", override_params = NULL) {
   )
   
   # Plot data with various options
-  log_info("Generating visualization plots")
+  pn_info("Generating visualization plots")
   
   # Standard plots
   plot_neighbours_per_clade(
@@ -184,7 +184,7 @@ main <- function(config_file = "config/config.yaml", override_params = NULL) {
   plot_neighbours_per_clade(combined_df, plot_count_codh = TRUE)
   
   # Correlation plot
-  log_info("Generating correlation matrix")
+  pn_info("Generating correlation matrix")
   make_correlation_matrix(
     combined_df %>%
       select(PIGI, assembly, clade) %>%
@@ -194,7 +194,7 @@ main <- function(config_file = "config/config.yaml", override_params = NULL) {
   )
   
   # Clade histograms
-  log_info("Generating clade histograms")
+  pn_info("Generating clade histograms")
   create_clade_histograms2(
     combined_df %>%
       select(PIGI, assembly, clade) %>%
@@ -204,7 +204,7 @@ main <- function(config_file = "config/config.yaml", override_params = NULL) {
   
   # Neighbour plot with annotated neighbours if available
   if (!is.null(annotated_neighbours) && nrow(annotated_neighbours) > 0) {
-    log_info("Generating plots with manual annotations")
+    pn_info("Generating plots with manual annotations")
     plot_neighbours_per_clade(
       combined_df %>% mutate(COG_LETTER = ANNOTATION), 
       exclude_unknown_clade = TRUE, 
@@ -233,10 +233,10 @@ main <- function(config_file = "config/config.yaml", override_params = NULL) {
   }
   
   # Generate HTML report of the analysis
-  log_info("Generating analysis report")
+  pn_info("Generating analysis report")
   generate_analysis_report(combined_df, config, output_dir)
   
-  log_info("Analysis complete. Results available in", output_dir)
+  pn_info("Analysis complete. Results available in", output_dir)
   
   # Return the combined data frame and other important objects
   return(list(
@@ -260,7 +260,7 @@ main <- function(config_file = "config/config.yaml", override_params = NULL) {
 generate_analysis_report <- function(combined_df, config, output_dir) {
   # Check if rmarkdown is installed
   if (!requireNamespace("rmarkdown", quietly = TRUE)) {
-    log_warn("Package 'rmarkdown' is needed for report generation. Skipping report.")
+    pn_warn("Package 'rmarkdown' is needed for report generation. Skipping report.")
     return(NULL)
   }
   
@@ -271,7 +271,7 @@ generate_analysis_report <- function(combined_df, config, output_dir) {
     # If not found in package, use local template
     report_template <- "inst/rmd/analysis_report.Rmd"
     if (!file.exists(report_template)) {
-      log_warn("Report template not found. Skipping report generation.")
+      pn_warn("Report template not found. Skipping report generation.")
       return(NULL)
     }
   }
@@ -290,9 +290,9 @@ generate_analysis_report <- function(combined_df, config, output_dir) {
       ),
       quiet = TRUE
     )
-    log_info("Analysis report generated:", report_file)
+    pn_info("Analysis report generated:", report_file)
   }, error = function(e) {
-    log_error("Failed to generate analysis report:", e$message)
+    pn_error("Failed to generate analysis report:", e$message)
   })
   
   return(report_file)

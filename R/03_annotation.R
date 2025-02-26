@@ -13,8 +13,8 @@ analyze_proteins <- function(df, column = 'ID', config) {
   output_dir <- file.path(config$paths$output_dir, current_date)
   
   # Log the start of protein annotation
-  log_info("Starting protein annotation with", config$annotation$tool)
-  log_info(paste("Annotating", nrow(df), "proteins"))
+  pn_info("Starting protein annotation with", config$annotation$tool)
+  pn_info(paste("Annotating", nrow(df), "proteins"))
   
   # Export accessions of the proteins
   protein_accessions <- data.frame(df %>% select(all_of(column)))
@@ -23,7 +23,7 @@ analyze_proteins <- function(df, column = 'ID', config) {
   
   # Get the FASTA file of the proteins
   fasta_file <- file.path(output_dir, "proteins.fasta")
-  log_info("Retrieving FASTA sequences for proteins")
+  pn_info("Retrieving FASTA sequences for proteins")
   
   # Run the FASTA retrieval script
   fasta_script <- system.file("scripts", "get_fasta_from_accession.sh", package = "proteinNeighbours")
@@ -32,11 +32,11 @@ analyze_proteins <- function(df, column = 'ID', config) {
   }
   
   bash_command <- paste(fasta_script, accessions_file, fasta_file)
-  log_info("Running command:", bash_command)
+  pn_info("Running command:", bash_command)
   
   system_result <- system2(bash_command, wait = TRUE)
   if (system_result != 0) {
-    log_error("Failed to retrieve FASTA sequences")
+    pn_error("Failed to retrieve FASTA sequences")
     return(NULL)
   }
   
@@ -46,7 +46,7 @@ analyze_proteins <- function(df, column = 'ID', config) {
   } else if (config$annotation$tool == "cog") {
     annotation_result <- run_cog_classifier(fasta_file, output_dir, config)
   } else {
-    log_error("Unknown annotation tool:", config$annotation$tool)
+    pn_error("Unknown annotation tool:", config$annotation$tool)
     return(NULL)
   }
   
@@ -63,7 +63,7 @@ analyze_proteins <- function(df, column = 'ID', config) {
 #' @return A data frame with the annotation results.
 #' @keywords internal
 run_eggnog_mapper <- function(fasta_file, output_dir, config) {
-  log_info("Running eggNOG-mapper for protein annotation")
+  pn_info("Running eggNOG-mapper for protein annotation")
   
   # Create eggNOG output directory
   eggnog_dir <- file.path(output_dir, "eggnog")
@@ -91,19 +91,19 @@ run_eggnog_mapper <- function(fasta_file, output_dir, config) {
   )
   
   cmd <- paste(cmd_parts, collapse = " ")
-  log_info("Running command:", cmd)
+  pn_info("Running command:", cmd)
   
   # Run eggNOG-mapper
   system_result <- system2(cmd, wait = TRUE)
   if (system_result != 0) {
-    log_error("Failed to run eggNOG-mapper")
+    pn_error("Failed to run eggNOG-mapper")
     return(NULL)
   }
   
   # Read the results
   result_file <- file.path(eggnog_dir, "classifier_result.tsv")
   if (!file.exists(result_file)) {
-    log_error("eggNOG-mapper result file not found:", result_file)
+    pn_error("eggNOG-mapper result file not found:", result_file)
     return(NULL)
   }
   
@@ -111,8 +111,8 @@ run_eggnog_mapper <- function(fasta_file, output_dir, config) {
   cog_classification <- read.delim(result_file)
   
   # Log success
-  log_info("Successfully annotated proteins with eggNOG-mapper")
-  log_info(paste("Found", nrow(cog_classification), "annotations"))
+  pn_info("Successfully annotated proteins with eggNOG-mapper")
+  pn_info(paste("Found", nrow(cog_classification), "annotations"))
   
   return(cog_classification)
 }
@@ -127,7 +127,7 @@ run_eggnog_mapper <- function(fasta_file, output_dir, config) {
 #' @return A data frame with the annotation results.
 #' @keywords internal
 run_cog_classifier <- function(fasta_file, output_dir, config) {
-  log_info("Running COG classifier for protein annotation")
+  pn_info("Running COG classifier for protein annotation")
   
   # Create COG output directory
   cog_dir <- file.path(output_dir, "cogclassifier")
@@ -135,85 +135,28 @@ run_cog_classifier <- function(fasta_file, output_dir, config) {
   
   # Run COGclassifier
   cog_command <- paste("COGclassifier -i", fasta_file, "-o", cog_dir)
-  log_info("Running command:", cog_command)
+  pn_info("Running command:", cog_command)
   
   system_result <- system2(cog_command, wait = TRUE)
   if (system_result != 0) {
-    log_error("Failed to run COG classifier")
+    pn_error("Failed to run COG classifier")
     return(NULL)
   }
   
   # Read the results
   result_file <- file.path(cog_dir, "classifier_result.tsv")
   if (!file.exists(result_file)) {
-    log_error("COG classifier result file not found:", result_file)
+    pn_error("COG classifier result file not found:", result_file)
     return(NULL)
   }
   
   cog_classification <- read.delim(result_file)
   
   # Log success
-  log_info("Successfully annotated proteins with COG classifier")
-  log_info(paste("Found", nrow(cog_classification), "annotations"))
+  pn_info("Successfully annotated proteins with COG classifier")
+  pn_info(paste("Found", nrow(cog_classification), "annotations"))
   
   return(cog_classification)
 }
 
-#' Log a message with specific level
-#'
-#' This is a wrapper function for logging that works whether the logger package is installed or not.
-#'
-#' @param level The log level.
-#' @param ... The message to log.
-#' @keywords internal
-log_message <- function(level, ...) {
-  msg <- paste(..., collapse = " ")
-  
-  # Use logger package if available
-  if (requireNamespace("logger", quietly = TRUE)) {
-    if (level == "INFO") {
-      logger::log_info(msg)
-    } else if (level == "WARN") {
-      logger::log_warn(msg)
-    } else if (level == "ERROR") {
-      logger::log_error(msg)
-    } else if (level == "DEBUG") {
-      logger::log_debug(msg)
-    }
-  } else {
-    # Fallback to basic message
-    cat(paste0("[", level, "] ", msg, "\n"))
-  }
-}
 
-#' Log an info message
-#' 
-#' @param ... The message to log.
-#' @keywords internal
-log_info <- function(...) {
-  log_message("INFO", ...)
-}
-
-#' Log a warning message
-#' 
-#' @param ... The message to log.
-#' @keywords internal
-log_warn <- function(...) {
-  log_message("WARN", ...)
-}
-
-#' Log an error message
-#' 
-#' @param ... The message to log.
-#' @keywords internal
-log_error <- function(...) {
-  log_message("ERROR", ...)
-}
-
-#' Log a debug message
-#' 
-#' @param ... The message to log.
-#' @keywords internal
-log_debug <- function(...) {
-  log_message("DEBUG", ...)
-}
