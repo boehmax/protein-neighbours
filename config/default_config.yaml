@@ -1,0 +1,66 @@
+# Protein Neighbors Analysis Configuration
+
+# Input/Output settings
+paths:
+  base_dir: "data"                    # Base directory for input files
+  output_dir: "output"                # Directory for output files
+  ncbi_dataset: "data/ncbi_dataset"   # Path to NCBI dataset directory
+
+# Input files
+files:
+  proteins: "proteins.csv"                   # CSV file with protein IDs
+  assemblies: "assm_accs.csv"                # CSV file with assembly IDs
+  protein_assembly: "assm_accs_protein.csv"  # CSV file with protein-assembly mappings
+  representative_files:
+    ipg: "representatives/ipg_representative.txt"
+    pdb: "representatives/pdb_representative.txt"
+    cluster: "representatives/cluster_representative.txt"
+  clade_dir: "clades"                         # Directory with clade files
+  clade_pattern: "^[C]"                       # Pattern to match clade files
+
+# Analysis parameters
+analysis:
+  basepairs: 300                     # Distance in base pairs to consider for neighbors
+  max_neighbors: 15                  # Maximum number of neighbors to identify
+  protein_of_interest: null          # Default to null, can be set at runtime
+  date: null                         # Date for outputs (null uses current date)
+
+# Annotation settings
+annotation:
+  tool: "eggnog"                     # Tool to use for annotation: "eggnog" or "cog"
+  eggnog:
+    db_dir: "data/eggnog_db"         # Path to eggNOG database
+    cpu: 4                           # Number of CPUs to use
+    temp_dir: "tmp"                  # Temporary directory
+    tax_scope: "auto"                # Taxonomic scope for annotation
+    go_evidence: "non-electronic"    # GO evidence filter
+    target_orthologs: "all"          # Target orthologs option
+    seed_ortholog_evalue: 0.001      # E-value cutoff for seed ortholog
+    seed_ortholog_score: 60          # Score cutoff for seed ortholog
+    query_coverage: 20               # Query coverage cutoff
+    subject_coverage: 20             # Subject coverage cutoff
+  cog:                               # Legacy COG settings (for backward compatibility)
+    sleep_time: 0.34                 # Sleep time between NCBI requests
+
+# Visualization settings
+visualization:
+  exclude_unknown_clade: false       # Whether to exclude unknown clades in plots
+  exclude_unknown_cog: false         # Whether to exclude unknown COGs in plots
+  plot_count_codh: false             # Plot CODH counts instead of neighbor counts
+  clade_colors:                      # Color palette for clades
+    - "#FFD92F"
+    - "#A6D854"
+    - "#FC8D62"
+    - "#E78AC3"
+    - "#8DA0CB"
+    - "#66C2A5"
+    - "#56B4E9"
+    - "#E5C494"
+    - "#B3B3B3"
+  plot_width: 30                     # Width of plots in cm
+  plot_height: 15                    # Height of plots in cm
+
+# Logging settings
+logging:
+  level: "INFO"                      # Logging level: DEBUG, INFO, WARNING, ERROR
+  file: "protein_neighbors.log"      # Log file name

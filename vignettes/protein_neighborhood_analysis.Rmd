@@ -1,0 +1,461 @@
+---
+title: "Protein Neighborhood Analysis"
+author: "Maximilian Böhm"
+date: "`r Sys.Date()`"
+output: 
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{Protein Neighborhood Analysis}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7,
+  fig.height = 5
+)
+```
+
+# Introduction
+
+The `proteinNeighbours` package provides tools for analyzing the genomic environment of proteins. Understanding the genomic context of a protein can provide valuable insights into its function, as functionally related genes are often located close to each other on the genome. This package helps you:
+
+1. Identify neighboring genes within a specified distance
+2. Annotate proteins using eggNOG-mapper with COG classification
+3. Analyze the distribution of neighbor types across different protein classes
+4. Visualize genomic neighborhoods and their patterns
+
+This vignette walks you through a complete analysis workflow, from data preparation to result interpretation.
+
+# Installation
+
+## Package Installation
+
+You can install the package from GitHub:
+
+```{r installation, eval = FALSE}
+# Install from GitHub
+devtools::install_github("username/protein-neighbours")
+
+# Or install from a local directory
+install.packages("path/to/protein-neighbours", repos = NULL, type = "source")
+```
+
+## Dependencies
+
+The package has several dependencies that need to be installed:
+
+### R Packages
+
+These will be installed automatically when you install the package:
+
+```{r dependencies, eval = FALSE}
+install.packages(c("tidyverse", "ape", "dplyr", "gggenes", "ggplot2", 
+                  "RColorBrewer", "yaml", "purrr", "readr", "stringr", 
+                  "tidyr", "withr", "reshape2"))
+
+# Optional but recommended packages
+install.packages(c("rmarkdown", "knitr", "logger", "DT", "plotly"))
+```
+
+### External Tools
+
+The package relies on two external tools:
+
+1. **NCBI Entrez Direct utilities** - For retrieving sequences from NCBI
+   Installation instructions: https://www.ncbi.nlm.nih.gov/books/NBK179288/
+
+2. **eggNOG-mapper** - For functional annotation of proteins
+   Installation instructions: http://eggnog-mapper.embl.de/
+
+Install eggNOG-mapper with:
+
+```bash
+pip install eggnog-mapper
+```
+
+# Getting Started
+
+## Data Preparation
+
+Before running an analysis, you need to prepare several input files:
+
+### Required Files
+
+Place these files in your data directory (default is `data/`):
+
+1. **proteins.csv** - A file containing protein accession numbers (one per line)
+2. **assm_accs.csv** - A file containing genome assembly accession numbers (one per line)
+3. **assm_accs_protein.csv** - A mapping between proteins and assemblies (two columns: assembly, protein)
+
+### GFF Files
+
+The package needs GFF files for the assemblies. These should be placed in:
+
+```
+data/ncbi_dataset/data/{assembly_id}/genomic.gff
+```
+
+You can download these files from NCBI using the datasets command-line tool:
+
+```bash
+datasets download genome accession --inputfile assm_accs.csv --include gff3
+unzip ncbi_dataset.zip -d data/
+```
+
+### Optional Files
+
+For advanced analyses, you can create these additional files:
+
+#### Clade Files
+
+Create a `clades` folder in your data directory with files for each clade:
+
+```
+data/clades/CladeA.txt
+data/clades/CladeB.txt
+...
+```
+
+Each file should contain protein IDs belonging to that clade.
+
+#### Representative Files
+
+For protein alias mapping (useful when protein accession numbers change):
+
+```
+data/representatives/ipg_representative.txt
+data/representatives/pdb_representative.txt
+data/representatives/cluster_representative.txt
+```
+
+## Basic Usage
+
+Here's a simple example of running an analysis:
+
+```{r basic-usage, eval = FALSE}
+library(proteinNeighbours)
+
+# Run with default settings
+results <- main()
+
+# Run with custom configuration file
+results <- main("config/my_config.yaml")
+
+# Override specific parameters
+results <- main(override_params = list(
+  "analysis.basepairs" = 500,
+  "analysis.max_neighbors" = 20,
+  "annotation.tool" = "eggnog"
+))
+```
+
+# Configuration
+
+## Configuration File
+
+The package uses a YAML configuration file for all parameters. The default location is `config/config.yaml`, but you can specify a different file.
+
+Here's an example of a configuration file:
+
+```yaml
+# Input/Output settings
+paths:
+  base_dir: "data"
+  output_dir: "output"
+  ncbi_dataset: "data/ncbi_dataset"
+
+# Input files
+files:
+  proteins: "proteins.csv"
+  assemblies: "assm_accs.csv"
+  protein_assembly: "assm_accs_protein.csv"
+
+# Analysis parameters
+analysis:
+  basepairs: 300
+  max_neighbors: 15
+  date: null  # Uses current date if null
+
+# Annotation settings
+annotation:
+  tool: "eggnog"
+  eggnog:
+    db_dir: "data/eggnog_db"
+    cpu: 4
+```
+
+## Parameter Overriding
+
+You can override configuration parameters without modifying the file:
+
+```{r override-params, eval = FALSE}
+# Override specific parameters
+results <- main(override_params = list(
+  "analysis.basepairs" = 500,
+  "paths.base_dir" = "my_data",
+  "annotation.eggnog.cpu" = 8
+))
+```
+
+# Workflow in Detail
+
+Let's walk through a complete analysis workflow:
+
+## 1. Loading Data
+
+The first step is to load protein and assembly data:
+
+```{r load-data, eval = FALSE}
+# Read protein and assembly data
+protein_assembly_data <- read_protein_assembly_data(
+  protein_file = "proteins.csv",
+  assembly_file = "assm_accs.csv",
+  protein_assembly_file = "assm_accs_protein.csv",
+  PATH = "data"
+)
+
+# Get protein aliases
+protein_aliases <- read_representatives(PATH = "data")
+```
+
+## 2. Identifying Neighbors
+
+Next, identify neighboring proteins:
+
+```{r neighbors, eval = FALSE}
+# Find neighbors for all proteins
+all_neighbours <- collect_all_neighbours(
+  protein_assembly_data$protein_assembly,
+  basepairs = 300,
+  max_neighbors = 15,
+  PATH = "data"
+)
+
+# Get information about all proteins
+all_protein <- collect_all_protein_info(
+  protein_assembly_data$protein_assembly,
+  PATH = "data"
+)
+
+# Combine all data
+all_data <- rbind(all_neighbours, all_protein)
+```
+
+## 3. Protein Annotation
+
+Annotate proteins with eggNOG-mapper:
+
+```{r annotation, eval = FALSE}
+# Annotate proteins
+annotation_results <- analyze_proteins(
+  df = all_neighbours,
+  column = 'ID',
+  config = config
+)
+
+# Analyze neighbor types
+amount_of_neighbours(annotation_results)
+```
+
+## 4. Combining Data
+
+Combine all data for analysis:
+
+```{r combine-data, eval = FALSE}
+# Get clade information
+clades <- read_clades(PATH = "data")
+
+# Check for manual annotations
+annotated_neighbours <- read_annotations(current_date)
+
+# Combine all data
+combined_df <- combine_and_plot(
+  neighbours_data = all_data,
+  cog_data = annotation_results,
+  clade_assign = clades,
+  neighbour_annotations = annotated_neighbours
+)
+```
+
+## 5. Visualization
+
+Create visualizations:
+
+```{r visualization, eval = FALSE}
+# Plot distribution of neighbors by clade
+plot_neighbours_per_clade(combined_df)
+
+# Plot distribution excluding unknowns
+plot_neighbours_per_clade(
+  combined_df,
+  exclude_unknown_clade = TRUE,
+  exclude_unknown_cog = TRUE
+)
+
+# Create correlation matrix
+make_correlation_matrix(
+  combined_df %>%
+    select(PIGI, assembly, clade) %>%
+    unique() %>%
+    select(assembly, clade),
+  unique(combined_df$clade)
+)
+
+# Create histograms
+create_clade_histograms2(
+  combined_df %>%
+    select(PIGI, assembly, clade) %>%
+    unique()
+)
+```
+
+## 6. Manual Annotation
+
+After running the initial analysis, you can manually annotate neighbor types:
+
+1. Examine `output/{date}/types_of_neighbours.csv`
+2. Create a new file named `types_of_neighbours_annotated.csv` in the same directory
+3. Add a fourth column with your annotations
+4. Re-run the analysis to incorporate your annotations
+
+```{r manual-annotation, eval = FALSE}
+# Re-run with manual annotations
+annotated_neighbours <- read_annotations(current_date)
+
+combined_df <- combine_and_plot(
+  neighbours_data = all_data,
+  cog_data = annotation_results,
+  clade_assign = clades,
+  neighbour_annotations = annotated_neighbours
+)
+
+# Plot with annotations
+plot_neighbours_per_clade(
+  combined_df %>% mutate(COG_LETTER = ANNOTATION),
+  exclude_unknown_clade = TRUE,
+  exclude_unknown_cog = TRUE,
+  output_path = "annotated_neighbours"
+)
+```
+
+# Advanced Topics
+
+## Working with Large Datasets
+
+For large datasets, here are some optimization strategies:
+
+```{r large-data, eval = FALSE}
+# Use parallel processing for eggNOG-mapper
+results <- main(override_params = list(
+  "annotation.eggnog.cpu" = 8  # Use 8 CPU cores
+))
+
+# Load existing results instead of recalculating
+results <- main(override_params = list(
+  "analysis.date" = "2025-02-20"  # Load results from a specific date
+))
+```
+
+## Custom Visualization
+
+You can create custom visualizations:
+
+```{r custom-vis, eval = FALSE}
+# Plot neighbors for a specific protein
+plot_neighbours(all_neighbours, "YP_123456.1", width = 25, height = 7)
+
+# Create a custom correlation plot
+correlation_matrix <- calculate_correlation(df, vector)
+custom_plot <- plot_correlation_matrix(correlation_matrix) +
+  ggplot2::theme_minimal() +
+  ggplot2::ggtitle("My Custom Correlation Plot")
+```
+
+## Integrating with Other Analyses
+
+You can integrate the results with other analyses:
+
+```{r integration, eval = FALSE}
+# Extract COG distribution
+cog_distribution <- combined_df %>%
+  filter(is.neighbour) %>%
+  count(COG_LETTER) %>%
+  arrange(desc(n))
+
+# Export for use in other tools
+write.csv(cog_distribution, "cog_distribution.csv", row.names = FALSE)
+
+# Generate a network graph (requires the igraph package)
+library(igraph)
+network_data <- combined_df %>%
+  filter(is.neighbour) %>%
+  select(PIGI, ID, COG_LETTER) %>%
+  rename(from = PIGI, to = ID, type = COG_LETTER)
+
+g <- graph_from_data_frame(network_data, directed = FALSE)
+plot(g, vertex.color = "lightblue", vertex.size = 5)
+```
+
+# Troubleshooting
+
+## Common Issues
+
+### Missing GFF Files
+
+If you encounter errors about missing GFF files:
+
+```{r missing-gff, eval = FALSE}
+# Check GFF file paths
+gff_paths <- file.path("data/ncbi_dataset/data", 
+                      protein_assembly_data$protein_assembly[, 1], 
+                      "genomic.gff")
+missing_files <- gff_paths[!file.exists(gff_paths)]
+cat("Missing GFF files:", length(missing_files), "\n")
+```
+
+### eggNOG-mapper Errors
+
+If eggNOG-mapper fails:
+
+```bash
+# Check eggNOG-mapper installation
+emapper.py --version
+
+# Download eggNOG database if needed
+download_eggnog_data.py -y
+```
+
+### Out of Memory
+
+For large datasets, you may encounter memory issues:
+
+```{r memory-issue, eval = FALSE}
+# Process proteins in batches
+protein_batches <- split(protein_assembly_data$protein_assembly, 
+                        ceiling(seq_along(protein_assembly_data$protein_assembly[,1]) / 100))
+
+all_neighbours <- data.frame()
+for (batch in protein_batches) {
+  batch_neighbours <- collect_all_neighbours(batch, basepairs = 300, max_neighbors = 15)
+  all_neighbours <- rbind(all_neighbours, batch_neighbours)
+  gc()  # Force garbage collection
+}
+```
+
+# Conclusion
+
+The `proteinNeighbours` package provides a comprehensive toolkit for analyzing protein genomic neighborhoods. By understanding the genomic context of proteins, you can gain valuable insights into protein function, evolution, and the organization of genomic regions.
+
+For further assistance, please refer to the function documentation or file an issue on GitHub.
+
+# Session Info
+
+```{r session-info}
+sessionInfo()
+```
