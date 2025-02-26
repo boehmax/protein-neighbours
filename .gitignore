@@ -11,7 +11,7 @@
 *.svg
 *.png
 *.pdf
-*.Rhistory
+.Rhistory
 
 # ignroing some R stuff
 .Rproj.user/
