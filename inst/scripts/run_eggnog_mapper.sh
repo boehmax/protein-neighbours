@@ -2,7 +2,7 @@
 # Script to run eggNOG-mapper on a FASTA file and format the output for the
 # protein neighbors analysis package
 #
-# Author: Protein Neighbors Package
+# Author: Maximilian Böhm
 # Date: February 2025
 
 # Display help message

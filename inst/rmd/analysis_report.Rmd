@@ -31,7 +31,7 @@ output_dir <- params$output_dir
 # Analysis Overview
 
 This report summarizes the protein neighborhood analysis performed on `r nrow(params$combined_df %>% filter(!is.neighbour))` proteins, identifying `r nrow(params$combined_df %>% filter(is.neighbour))` neighboring proteins.
-
+:)
 ## Configuration Summary
 
 ```{r config-summary}

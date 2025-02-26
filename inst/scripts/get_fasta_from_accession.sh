@@ -1,6 +1,6 @@
 #!/bin/bash
 # Script to retrieve FASTA sequences from NCBI using accession numbers
-# Author: Maximilian Böhm
+# Author: Maximilian Böhm :)
 # Modified: Improved version with better error handling, usage instructions, and performance
 
 # Display help/usage information
