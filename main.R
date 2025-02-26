@@ -265,7 +265,38 @@ generate_analysis_report <- function(combined_df, config, output_dir) {
     return(NULL)
   }
   
-  # Create a temporary Rmd file
+  # Add more detailed directory creation debugging
+  cat("Attempting to create directory:", output_dir, "\n")
+  cat("Current working directory:", getwd(), "\n")
+  
+  # Try absolute path if relative path fails
+  if (!dir.exists(output_dir)) {
+    tryCatch({
+      dir.create(output_dir, recursive = TRUE)
+      cat("Directory creation attempt result:", dir.exists(output_dir), "\n")
+    }, warning = function(w) {
+      cat("Warning during directory creation:", w$message, "\n")
+    }, error = function(e) {
+      cat("Error during directory creation:", e$message, "\n")
+    })
+  }
+  
+  # Verify directory existence with full path
+  full_output_dir <- normalizePath(output_dir, mustWork = FALSE)
+  cat("Normalized output directory path:", full_output_dir, "\n")
+  
+  if (!dir.exists(full_output_dir)) {
+    tryCatch({
+      dir.create(full_output_dir, recursive = TRUE)
+      cat("Normalized path directory creation result:", dir.exists(full_output_dir), "\n")
+    }, warning = function(w) {
+      cat("Warning with normalized path:", w$message, "\n")
+    }, error = function(e) {
+      cat("Error with normalized path:", e$message, "\n")
+    })
+  }
+  
+  # Create the report template path logic
   report_template <- system.file("rmd", "analysis_report.Rmd", package = "proteinNeighbours")
   
   if (!file.exists(report_template)) {
@@ -275,6 +306,11 @@ generate_analysis_report <- function(combined_df, config, output_dir) {
       pn_warn("Report template not found. Skipping report generation.")
       return(NULL)
     }
+  }
+  
+  # Verify directory existence again
+  if (!dir.exists(output_dir)) {
+    stop("Unable to create output directory: ", output_dir)
   }
   
   # Generate the report

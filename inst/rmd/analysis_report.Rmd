@@ -26,6 +26,11 @@ library(plotly)
 combined_df <- params$combined_df
 config <- params$config
 output_dir <- params$output_dir
+
+  # Create the directory if it doesn't exist
+  if (!dir.exists(output_dir)) {
+    dir.create(output_dir, recursive = TRUE)
+  }
 ```
 
 # Analysis Overview
