@@ -222,7 +222,7 @@ analyze_proteins <- function(df, column = 'ID', config, force = FALSE) {
           "--output eggnog_results",
           "--data_dir", shQuote(normalizePath(db_dir, mustWork = FALSE)),
           "--cpu", eggnog_config$cpu,
-          "--temp_dir", shQuote(tmp_dir),
+          "--temp_dir", shQuote(normalizePath(tmp_dir), mustWork = FALSE),
           "--tax_scope", eggnog_config$tax_scope,
           "--go_evidence non-electronic",
           "--target_orthologs all",
