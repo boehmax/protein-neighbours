@@ -213,6 +213,7 @@ analyze_proteins <- function(df, column = 'ID', config, force = FALSE) {
         # Create the tmp directory
         tmp_dir <- file.path(eggnog_dir, "tmp")
         dir.create(tmp_dir, recursive = TRUE, showWarnings = FALSE)
+        file_to_resume  <- normalizePath(file.path(eggnog_dir, "eggnog_results.emapper.hits"), mustWork = FALSE)
         
         # Build the command with resume flag
         cmd <- paste(
@@ -222,14 +223,14 @@ analyze_proteins <- function(df, column = 'ID', config, force = FALSE) {
           "--output eggnog_results",
           "--data_dir", shQuote(normalizePath(db_dir, mustWork = FALSE)),
           "--cpu", eggnog_config$cpu,
-          "--temp_dir", shQuote(normalizePath(tmp_dir), mustWork = FALSE),
+          "--temp_dir", shQuote(normalizePath(tmp_dir, mustWork = FALSE)),
           "--tax_scope", eggnog_config$tax_scope,
           "--go_evidence non-electronic",
           "--target_orthologs all",
           "--seed_ortholog_evalue", eggnog_config$seed_ortholog_evalue,
           "--seed_ortholog_score", eggnog_config$seed_ortholog_score,
-          # Add resume flag to continue from existing results or override to start fresh
-          ifelse(force, "--override", "--resume")
+          # Add resume flag to continue from existing results if available or override to start fresh
+          ifelse(force, "--override", ifelse(file.exists(file_to_resume) ,"--resume",""))
         )
         
         # Run eggNOG-mapper
