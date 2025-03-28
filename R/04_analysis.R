@@ -46,8 +46,9 @@ amount_of_neighbours <- function(cog_data, output_dir = NULL) {
   tryCatch({
     types_of_neighbours <- cog_data %>%
       dplyr::select(Description, COG_category) %>%
-      dplyr::add_count(Description) %>%
-      dplyr::arrange(dplyr::desc(n)) %>%
+      dplyr::group_by(Description, COG_category) %>%  # Group by both Description and COG_category
+      dplyr::summarize(n = n()) %>%  # Count occurrences within each group
+      dplyr::arrange(dplyr::desc(n)) %>%  # Arrange by count in descending order
       unique()
     
     pn_info("Identified", nrow(types_of_neighbours), "unique neighbor types")
@@ -71,7 +72,7 @@ amount_of_neighbours <- function(cog_data, output_dir = NULL) {
       
       # Save the plot
       output_file <- file.path(output_dir, 'types_of_neighbours.png')
-      ggplot2::ggsave(output_file, plot = p, width = 10, height = 8)
+      ggplot2::ggsave(output_file, plot = p)
       pn_info("Saved neighbor types plot to:", output_file)
     }, error = function(e) {
       pn_error("Failed to create or save neighbor types plot:", e$message)
@@ -168,7 +169,7 @@ combine_and_plot <- function(neighbours_data, cog_data, clade_assign, neighbour_
                     GENE_NAME = NA,
                     COG_NAME = 'unknown',
                     COG_category = 'unknown',
-                    COG_DESCRIPTION = 'unknown'
+                    Description = 'unknown'
       )
   } else {
     # Check column names in cog_data
@@ -189,7 +190,7 @@ combine_and_plot <- function(neighbours_data, cog_data, clade_assign, neighbour_
                       GENE_NAME = NA,
                       COG_NAME = 'unknown',
                       COG_category = 'unknown',
-                      COG_DESCRIPTION = 'unknown'
+                      Description = 'unknown'
         )
     }
     
@@ -203,13 +204,14 @@ combine_and_plot <- function(neighbours_data, cog_data, clade_assign, neighbour_
       
       combined_data <- neighbours_with_clades %>%
         dplyr::left_join(distinct_cog_data, by = c("ID" = join_col)) %>%
+        dplyr::mutate(COG_category = stringr::str_sub(COG_category, 1, 1))%>% #Reducing complexecity 
         tidyr::replace_na(list(COG_ID = NA,
                                CDD_ID = NA,
                                EVALUE = NA,
                                GENE_NAME = NA,
                                COG_NAME = 'unknown',
                                COG_category = 'unknown',
-                               COG_DESCRIPTION = 'unknown'
+                               Description = 'unknown'
         ))
       
       pn_info("Merged", nrow(distinct_cog_data), "COG annotations")
@@ -220,16 +222,16 @@ combine_and_plot <- function(neighbours_data, cog_data, clade_assign, neighbour_
   if (!is.null(neighbour_annotations) && nrow(neighbour_annotations) > 0) {
     pn_info("Adding manual neighbor annotations")
     
-    # Check if COG_NAME exists in both dataframes
-    if (!"COG_NAME" %in% colnames(combined_data)) {
-      pn_warn("COG_NAME column missing from combined_data. Cannot add manual annotations.")
-    } else if (!"COG_NAME" %in% colnames(neighbour_annotations)) {
-      pn_warn("COG_NAME column missing from neighbour_annotations. Cannot add manual annotations.")
+    # Check if Description exists in both dataframes
+    if (!"Description" %in% colnames(combined_data)) {
+      pn_warn("Description column missing from combined_data. Cannot add manual annotations.")
+    } else if (!"Description" %in% colnames(neighbour_annotations)) {
+      pn_warn("Description column missing from neighbour_annotations. Cannot add manual annotations.")
     } else {
       # Add manual annotations
       combined_data <- combined_data %>%
         dplyr::left_join(neighbour_annotations %>% 
-                           dplyr::select(COG_NAME, ANNOTATION), by = "COG_NAME") %>%
+                           dplyr::select(Description, ANNOTATION), by = "Description") %>%
         tidyr::replace_na(list(ANNOTATION = 'unknown'))
       
       pn_info("Added", nrow(neighbour_annotations), "manual annotations")
@@ -294,7 +296,7 @@ how_many_clades_per_assembly <- function(fasta_data) {
 #' @export
 calculate_correlation <- function(df, vector) {
   pn_info("Calculating correlation matrix")
-  
+  vector <- sort(vector)
   tryCatch({
     # Create a contingency table
     matrix <- as.data.frame.matrix(table(na.omit(df)))
@@ -305,8 +307,8 @@ calculate_correlation <- function(df, vector) {
     rownames(correlation.matrix) <- vector
     
     # Calculate correlation values
-    for (i in seq_along(vector)) {
-      for (l in seq_along(vector)) {
+    for (i in vector) {
+      for (l in vector) {
         # Calculate probability of having clade l given clade i
         var1 <- nrow(matrix %>% dplyr::filter(matrix[, i] >= 1 & matrix[, l] >= 1)) / 
               nrow(matrix %>% dplyr::filter(matrix[, i] >= 1))

@@ -408,8 +408,6 @@ generate_dummy_sequences <- function(protein_ids, output_file) {
   return(TRUE)
 }
 
-# Replace the process_eggnog_output function in R/03_annotation.R
-
 #' Process eggNOG-mapper output into COG classifier format
 #'
 #' @param annotations_file Path to the eggNOG-mapper annotations file
@@ -710,90 +708,6 @@ S	POORLY CHARACTERIZED	Function unknown
   })
 }
 
-#' Create diverse dummy COG annotations for testing
-#'
-#' @param protein_ids Vector of protein IDs to annotate
-#' @return A data frame with diverse dummy COG annotations
-#' @keywords internal
-create_diverse_dummy_annotations <- function(protein_ids) {
-  # Define COG categories and their descriptions
-  cog_categories <- data.frame(
-    COG_LETTER = c("J", "A", "K", "L", "B", "D", "Y", "V", "T", "M", "N", "Z", "W", "U", "O", 
-                   "X", "C", "G", "E", "F", "H", "I", "P", "Q", "R", "S"),
-    COG_NAME = c(rep("INFORMATION STORAGE AND PROCESSING", 5),
-                 rep("CELLULAR PROCESSES AND SIGNALING", 10),
-                 "MOBILOME",
-                 rep("METABOLISM", 8),
-                 rep("POORLY CHARACTERIZED", 2)),
-    COG_DESCRIPTION = c(
-      "Translation, ribosomal structure and biogenesis",
-      "RNA processing and modification",
-      "Transcription",
-      "Replication, recombination and repair",
-      "Chromatin structure and dynamics",
-      "Cell cycle control, cell division, chromosome partitioning",
-      "Nuclear structure",
-      "Defense mechanisms",
-      "Signal transduction mechanisms",
-      "Cell wall/membrane/envelope biogenesis",
-      "Cell motility",
-      "Cytoskeleton",
-      "Extracellular structures",
-      "Intracellular trafficking, secretion, and vesicular transport",
-      "Posttranslational modification, protein turnover, chaperones",
-      "Mobilome: prophages, transposons",
-      "Energy production and conversion",
-      "Carbohydrate transport and metabolism",
-      "Amino acid transport and metabolism",
-      "Nucleotide transport and metabolism",
-      "Coenzyme transport and metabolism",
-      "Lipid transport and metabolism",
-      "Inorganic ion transport and metabolism",
-      "Secondary metabolites biosynthesis, transport and metabolism",
-      "General function prediction only",
-      "Function unknown"
-    ),
-    stringsAsFactors = FALSE
-  )
-  
-  # Ensure a wide range of COG categories, not just S
-  # To make it more realistic, weight the probability of common categories
-  common_categories <- c("K", "E", "T", "M", "C", "G", "P", "O", "L", "J", "S", "R")
-  weights <- rep(1, nrow(cog_categories))
-  weights[match(common_categories, cog_categories$COG_LETTER)] <- 3  # 3x more likely
-  
-  # Create dummy results with diverse COG assignments
-  results <- data.frame()
-  
-  for (id in protein_ids) {
-    # Assign 1-3 COG categories to each protein
-    num_cogs <- sample(1:3, 1)
-    
-    # For each protein, select categories without replacement
-    selected_indices <- sample(1:nrow(cog_categories), num_cogs, prob = weights, replace = FALSE)
-    
-    for (idx in selected_indices) {
-      # Create a random COG ID
-      cog_id <- paste0("COG", sprintf("%04d", sample(1:9999, 1)))
-      
-      # Add to results
-      results <- rbind(results, data.frame(
-        QUERY_ID = id,
-        COG_ID = cog_id,
-        CDD_ID = "-",
-        EVALUE = paste0(runif(1, min = 1e-100, max = 1e-10)),
-        GENE_NAME = "-",
-        COG_NAME = cog_categories$COG_NAME[idx],
-        COG_LETTER = cog_categories$COG_LETTER[idx],
-        COG_DESCRIPTION = cog_categories$COG_DESCRIPTION[idx],
-        stringsAsFactors = FALSE
-      ))
-    }
-  }
-  
-  pn_warn("Created", nrow(results), "diverse dummy annotations for", length(protein_ids), "proteins")
-  return(results)
-}
 
 #' Create dummy COG annotations for testing
 #'
