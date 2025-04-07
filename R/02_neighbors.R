@@ -196,6 +196,7 @@ collect_all_protein_info <- function(protein.assembly, PATH = 'data') {
 #' @param protein.id The protein ID to search for neighbors.
 #' @param bp Number of base pairs to consider for neighbors (default is 300).
 #' @param n Number of neighbors to find (default is 15).
+#' @param overlap Number of base pairs to consider to be OK as overlapping genes (default is 50).
 #' @return A data frame with neighboring proteins.
 #' @export
 getNeighborProteins <- function(gff.df, protein.id, bp = 300, n = 15, overlap = 50) {
