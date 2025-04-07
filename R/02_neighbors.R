@@ -198,7 +198,7 @@ collect_all_protein_info <- function(protein.assembly, PATH = 'data') {
 #' @param n Number of neighbors to find (default is 15).
 #' @return A data frame with neighboring proteins.
 #' @export
-getNeighborProteins <- function(gff.df, protein.id, bp = 300, n = 15) {
+getNeighborProteins <- function(gff.df, protein.id, bp = 300, n = 15, overlap = 50) {
   pn_debug("Finding neighbors for protein:", protein.id)
   
   # Initialize empty data frame for neighbors
@@ -224,7 +224,7 @@ getNeighborProteins <- function(gff.df, protein.id, bp = 300, n = 15) {
   for (i in seq_len(n)) {
     # Define condition for upstream neighbors
     condition <- start - bp < gff.df$end & 
-                gff.df$end <= start & 
+                gff.df$end <= start+overlap & 
                 gff.df$type == 'CDS' & 
                 gff.df$strand == strand & 
                 gff.df$seqid == seqid
@@ -239,7 +239,7 @@ getNeighborProteins <- function(gff.df, protein.id, bp = 300, n = 15) {
     
     # Define condition for downstream neighbors
     condition <- end + bp > gff.df$start & 
-                gff.df$start >= end & 
+                gff.df$start >= end-overlap & 
                 gff.df$type == 'CDS' & 
                 gff.df$strand == strand & 
                 gff.df$seqid == seqid
