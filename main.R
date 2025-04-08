@@ -106,7 +106,8 @@ main <- function(config_file = "config/config.yaml", override_params = NULL) {
       protein_assembly, 
       basepairs = config$analysis$basepairs, 
       max_neighbors = config$analysis$max_neighbors, 
-      PATH = config$paths$base_dir
+      PATH = config$paths$base_dir,
+      overlap = config$analysis$overlap
     )
     
     pn_info("Collecting protein information")

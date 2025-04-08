@@ -268,7 +268,7 @@ getNeighborProteins <- function(gff.df, protein.id, bp = 300, n = 15, overlap = 
 #' @param m Number of neighbors to find (default is 15).
 #' @return A data frame with neighboring proteins.
 #' @export
-getProteinNeighborsFromGff3 <- function(input, protein.id, basepairs = 300, m = 15) {
+getProteinNeighborsFromGff3 <- function(input, protein.id, basepairs = 300, m = 15, overlap = 50) {
   # Inform the user which input is being processed
   pn_info(paste("Processing input:", input))
   
@@ -293,7 +293,7 @@ getProteinNeighborsFromGff3 <- function(input, protein.id, basepairs = 300, m = 
                  product = getAttributeField(attributes, "product"))
   
   # Get neighboring proteins
-  finalOutput <- getNeighborProteins(gffData, protein.id, basepairs, m)
+  finalOutput <- getNeighborProteins(gffData, protein.id, basepairs, m, overlap)
   
   return(finalOutput)
 }
@@ -308,7 +308,7 @@ getProteinNeighborsFromGff3 <- function(input, protein.id, basepairs = 300, m = 
 #' @param PATH Path where the ncbi_dataset folder is stored (default = data).
 #' @return A data frame with all neighbors.
 #' @export
-collect_all_neighbours <- function(protein.assembly, basepairs = 300, max_neighbors = 15, PATH = 'data') {
+collect_all_neighbours <- function(protein.assembly, basepairs = 300, max_neighbors = 15, PATH = 'data', overlap = 50) {
   pn_info("Collecting neighbors for", nrow(protein.assembly), "proteins")
   pn_info(paste("Parameters: basepairs =", basepairs, ", max_neighbors =", max_neighbors))
   
@@ -331,7 +331,7 @@ collect_all_neighbours <- function(protein.assembly, basepairs = 300, max_neighb
     gff_file <- file.path(PATH, 'ncbi_dataset/data', protein.assembly[i, 1], 'genomic.gff')
     
     # Get neighbors for this protein
-    np <- getProteinNeighborsFromGff3(gff_file, protein.assembly[i, 2], basepairs, max_neighbors)
+    np <- getProteinNeighborsFromGff3(gff_file, protein.assembly[i, 2], basepairs, max_neighbors, overlap)
     
     # Skip the iteration if np is NULL
     if (is.null(np)) {
