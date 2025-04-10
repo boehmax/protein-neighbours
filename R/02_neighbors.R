@@ -232,7 +232,8 @@ getNeighborProteins <- function(gff.df, protein.id, bp = 300, n = 15, overlap = 
     
     # If there are upstream neighbors, add the first one to the neighbors data frame
     if (sum(condition) > 0) {
-      output <- gff.df[condition, ][1, ]
+      output1 <- gff.df[condition, ]
+      output <- output1[order(output1$end, decreasing = TRUE),][1, ] #handling cases were a very short neighbour might be overlooked
       start <- output$start
       neighbors <- rbind(neighbors, output)
       pn_debug(paste("Found upstream neighbor", i, ":", output$ID))
@@ -247,7 +248,8 @@ getNeighborProteins <- function(gff.df, protein.id, bp = 300, n = 15, overlap = 
     
     # If there are downstream neighbors, add the first one to the neighbors data frame
     if (sum(condition) > 0) {
-      output <- gff.df[condition, ][1, ]
+      output1 <- gff.df[condition, ]
+      output <- output1[order(output1$start, decreasing = FALSE),][1, ] #handling cases were a very short neighbour might be overlooked
       end <- output$end
       neighbors <- rbind(neighbors, output)
       pn_debug(paste("Found downstream neighbor", i, ":", output$ID))
@@ -511,3 +513,4 @@ plot_neighbours <- function(all.neighbours.df, protein.id, output_dir = "output"
   
   return(invisible(NULL))
 }
+
