@@ -115,17 +115,13 @@ plot_neighbours_per_clade <- function(combined_data, exclude_unknown_clade = FAL
 #' @keywords internal
 prepare_neighbour_count <- function(data, exclude_unknown_clade, exclude_unknown_cog, plot_count_codh = FALSE) {
   # Filter data based on options
-  if (exclude_unknown_clade) {
-    data <- data %>% dplyr::filter(clade != "unknown")
-  }
-  
-  if (exclude_unknown_cog) {
-    data <- data %>% dplyr::filter(COG_category != "unknown")
-  }
+
   
   if (plot_count_codh) {
     # Use PIGI as ID to count CODH proteins with specific neighbors
-    data <- data %>% dplyr::mutate(ID = PIGI)
+    data <- data %>% dplyr::mutate(ID = PIGI)%>%
+      select(is.neighbour, clade, COG_category, ID, PIGI)%>%
+      unique()
   }
   
   # Count proteins with distinct COG_category when is.neighbour is TRUE
@@ -142,15 +138,29 @@ prepare_neighbour_count <- function(data, exclude_unknown_clade, exclude_unknown
   
   # Calculate proteins with no neighbours
   no_neighbours_count <- protein_count %>%
-    dplyr::left_join(neighbours_count %>% 
-                  dplyr::group_by(clade) %>% 
-                  dplyr::summarise(total_neighbours = sum(n)), by = "clade") %>%
-    dplyr::mutate(n = n - dplyr::coalesce(total_neighbours, 0)) %>%
+    dplyr::left_join(data %>% dplyr::mutate(ID = PIGI)%>%
+                       dplyr::filter(is.neighbour == TRUE) %>%
+                       select(clade, ID)%>%
+                       unique() %>%
+                       dplyr::count(clade, .drop = FALSE) %>%
+                       tidyr::replace_na(list(clade = "unknown", COG_category = "unknown"))%>%
+                       dplyr::group_by(clade) %>% 
+                       dplyr::summarise(protein_with_neighbours = sum(n)), by = "clade") %>%
+    dplyr::mutate(n = n - dplyr::coalesce(protein_with_neighbours, 0)) %>%
     dplyr::select(clade, n) %>%
     dplyr::mutate(COG_category = "no neighbours")
   
   # Combine the two dataframes
   combined_count <- dplyr::bind_rows(neighbours_count, no_neighbours_count)
+  
+  
+  if (exclude_unknown_clade) {
+    combined_count <- combined_count %>% dplyr::filter(clade != "unknown")
+  }
+  
+  if (exclude_unknown_cog) {
+    combined_count <- combined_count %>% dplyr::filter(COG_category != "unknown")
+  }
   
   # Select and arrange the columns as required
   final_output <- combined_count %>%
@@ -437,7 +447,7 @@ plot_correlation_matrix <- function(correlation.matrix) {
 #' @return A ggplot object representing the correlation matrix plot if supress_output is FALSE.
 #' @export
 make_correlation_matrix <- function(df, vector, supress_output = FALSE, 
-                                   output_dir = NULL, width = 10, height = 10) {
+                                   output_dir = NULL, width = 15, height = 15) {
   pn_info("Creating and saving correlation matrix")
   
   # Set output directory

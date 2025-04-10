@@ -20,8 +20,9 @@ files:
 
 # Analysis parameters
 analysis:
-  basepairs: 300                     # Distance in base pairs to consider for neighbors
+  basepairs: 300                     # Maximum acceptable intergenic space
   max_neighbors: 15                  # Maximum number of neighbors to identify
+  overlap: 50 			     # Accaptable overlap of two adjacent genes
   protein_of_interest: null          # Default to null, can be set at runtime
   date: null                         # Date for outputs (null uses current date)
 

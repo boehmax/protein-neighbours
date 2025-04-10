@@ -2,9 +2,10 @@
 
 # Input/Output settings
 paths:
-  base_dir: "data/2025-03-24"                    # Base directory for input files
+                   # Base directory for input files
+  base_dir: "data/2025-03-25"                    # Base directory for input files
   output_dir: "output"                # Directory for output files
-  ncbi_dataset: "data/hcp_data/ncbi_dataset"   # Path to NCBI dataset directory
+  ncbi_dataset: "data/2025-03-25/ncbi_dataset"   # Path to NCBI dataset directory
 
 # Input files
 files:
