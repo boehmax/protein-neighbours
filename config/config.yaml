@@ -2,9 +2,9 @@
 
 # Input/Output settings
 paths:
-  base_dir: "data/2025-03-25"                    # Base directory for input files
+  base_dir: "data/2025-03-24"                    # Base directory for input files
   output_dir: "output"                # Directory for output files
-  ncbi_dataset: "data/2025-03-25/ncbi_dataset"   # Path to NCBI dataset directory
+  ncbi_dataset: "data/2025-03-24/ncbi_dataset"   # Path to NCBI dataset directory
 
 # Input files
 files:
@@ -22,6 +22,7 @@ files:
 analysis:
   basepairs: 300                     # Distance in base pairs to consider for neighbors
   max_neighbors: 15                  # Maximum number of neighbors to identify
+  overlap: 50
   protein_of_interest: null          # Default to null, can be set at runtime
   date: null                         # Date for outputs (null uses current date)
 
