@@ -15,6 +15,9 @@
 
 # ignroing some R stuff
 .Rproj.user/
+.Rhistory
+.RData
+*.Rproj
 
 # Specific things to ignore
 output/
@@ -22,6 +25,15 @@ data/
 reports/
 config/config.yaml
 
+# Output and logs
+output/
+*.log
+*.html
 
+# eggNOG-mapper DBs and large datasets
+data/
+config/*.bak
 
-
+# OS files
+.DS_Store
+Thumbs.db
