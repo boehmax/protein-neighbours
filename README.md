@@ -1,8 +1,72 @@
 # Protein Genomic Environment Analysis
 
-A comprehensive R package for analyzing the genomic neighborhood of proteins. This package examines neighboring proteins, annotates them using eggNOG-mapper, and visualizes the results to provide insights into genomic context and potential functional relationships.
+This project provides a comprehensive **R package and pipeline** for analyzing the genomic neighborhood of proteins. You can use it as a standard R package (recommended for reproducibility and modularity), or simply run the main script directly if you prefer a quick, script-based workflow.
 
-Note: In the current version the automated report generation is not available. We are working to reolve this issue.
+---
+
+## Installation
+
+### Option 1: Install as an R Package (Recommended)
+
+1. **Clone the repository:**
+    ```sh
+    git clone https://github.com/boehmax/protein-neighbours.git
+    cd protein-neighbours
+    ```
+
+2. **Open R (or RStudio) in the project directory and run:**
+    ```r
+    # If you don't have devtools, install it first:
+    # install.packages("devtools")
+    devtools::install()
+    ```
+
+3. **Load the package:**
+    ```r
+    library(proteinNeighbours)
+    ```
+
+4. **Run the pipeline:**
+    ```r
+    results <- main()
+    ```
+
+---
+
+### Option 2: Run as a Standalone Script
+
+If you don’t want to install the package, you can simply source and run the main script:
+
+1. **Clone the repository and set your working directory to the project folder.**
+
+2. **In R:**
+    ```r
+    source("main.R")
+    results <- main()
+    ```
+
+---
+
+### Prerequisites
+
+- **R** (>= 4.0.0)
+- Required R packages (will be installed automatically if you use the package):
+    - tidyverse
+    - ape
+    - ggplot2
+    - gggenes
+    - RColorBrewer
+    - yaml
+    - logger (optional, for enhanced logging)
+    - rmarkdown (optional, for report generation)
+- **eggNOG-mapper** (external, for protein annotation)
+    - [eggNOG-mapper Documentation](http://eggnog-mapper.embl.de/)
+    - Install with: `pip install eggnog-mapper`
+
+---
+
+You can now follow the rest of the instructions below for configuration, data requirements, and usage.  
+**Whether you use the package or just the script, the workflow and outputs are the same!**
 
 ## Overview
 
@@ -13,32 +77,6 @@ This package explores and analyzes the genomic environment of proteins by:
 3. Grouping proteins by clades or other classifications
 4. Generating visualizations to understand distribution patterns
 5. Creating reports for sharing and documentation
-
-## Installation
-
-### Prerequisites
-
-- R (>= 4.0.0)
-- Required R packages (will be installed automatically):
-  - tidyverse
-  - ape
-  - ggplot2
-  - gggenes
-  - RColorBrewer
-  - yaml
-  - logger (optional, for enhanced logging)
-  - rmarkdown (optional, for report generation)
-
-### External Dependencies
-
-- **eggNOG-mapper**: For protein annotation (replaces the previously used COGclassifier)
-  - Installation: [eggNOG-mapper Documentation](http://eggnog-mapper.embl.de/)
-  - `pip install eggnog-mapper`
-
-### Installing
-
-Clone this repository and set your working directory to the project folder in R.
-
 
 ## Running the Pipeline
 
