@@ -1,99 +1,229 @@
-# Genomic Environment Analysis
+# Protein Genomic Environment Analysis
 
-**Work in Progress**
+A comprehensive R package for analyzing the genomic neighborhood of proteins. This package examines neighboring proteins, annotates them using eggNOG-mapper, and visualizes the results to provide insights into genomic context and potential functional relationships.
 
-This project is currently under active development and is not yet complete. Features and functionality may change, and the documentation may not be fully up to date.
+## Overview
 
-This script is designed to explore and analyze the genomic environment of a given protein. It performs the following tasks:
+This package explores and analyzes the genomic environment of proteins by:
 
-1. Loads necessary libraries.
-2. Sources other scripts.
-3. Reads in data.
-4. Performs analysis.
-5. Generates plots.
+1. Identifying neighboring proteins within a specified distance
+2. Annotating proteins using eggNOG-mapper with COG classification
+3. Grouping proteins by clades or other classifications
+4. Generating visualizations to understand distribution patterns
+5. Creating reports for sharing and documentation
 
-## Libraries Used
-- `tidyverse`
-- `ape`
-- `dplyr`
-- `gggenes`
-- `ggplot2`
-- `RColorBrewer`
+## Installation
 
-## Scripts Sourced
-- `01_open.R`
-- `02_clean.R`
-- `03_functions.R`
+### Prerequisites
 
-## Main Function
-The main function of the script performs the following steps:
+- R (>= 4.0.0)
+- Required R packages (will be installed automatically):
+  - tidyverse
+  - ape
+  - ggplot2
+  - gggenes
+  - RColorBrewer
+  - yaml
+  - logger (optional, for enhanced logging)
+  - rmarkdown (optional, for report generation)
 
-1. Reads protein and assembly data.
-2. Generates protein alias data.
-3. Collects neighboring proteins.
-4. Checks if results are saved.
-5. Plots the neighbors.
-6. Reads clade information.
-7. Reads cluster domain information.
-8. Gets the types of neighbors and their counts.
-9. Re-imports the types of neighbors after manual annotation.
-10. Combines and plots the data.
+### External Dependencies
 
+- **eggNOG-mapper**: For protein annotation (replaces the previously used COGclassifier)
+  - Installation: [eggNOG-mapper Documentation](http://eggnog-mapper.embl.de/)
+  - `pip install eggnog-mapper`
 
-## Files to Supply
+### Installing the Package
 
-Ensure the following files are placed in the directory specified by the `PATH` variable:
+```r
+# Install from GitHub
+devtools::install_github("yourusername/protein-neighbours")
 
-- `proteins.csv`: Contains a list of all proteins of interest for neighbor analysis.
-- `assm_accs.csv`: Contains genome assembly accession numbers, corresponding to folder names in the `PATH/ncbi_dataset/data/` directory.
-- `assm_accs_protein.csv`: A CSV file with genome assembly accession numbers in the first column and protein accession numbers in the second column.
-- `ncbi_dataset/data/GENOME_ACCESSION/genomic.gff`: Contains downloaded and extracted genomic information from the NCBI database in `.gff` format. This file can be obtained using the following command:
-    ```bash
-    PATH=PATH/TO/YOUR/ncbi/datasets
-    $PATH download genome accession --inputfile assm_accs.csv --include gff3
-    ```
-## Optional Files
+# Or install from local directory
+install.packages("path/to/protein-neighbours", repos = NULL, type = "source")
+```
 
-### Clade Files
-- **`PATH/clades/Clade*.txt`**: Create a `clades` folder where you save lists of proteins. Each file should correspond to a specific clade (or any other grouping you want to analyze).
+## Quick Start
 
-### Representative Files
-- **`PATH/representatives/ipg_representative.csv`**
-- **`PATH/representatives/pdb_representative.csv`**
-- **`PATH/representatives/cluster_representative.csv`**
+```r
+# Load the package
+library(proteinNeighbours)
 
-During the analysis of the primary list of proteins, it might happen that the protein you provided as input (PIGI...protein I gave as input) no longer corresponds to the protein accession numbers in the genomic data you downloaded. It is therefore important to collect files to cross-reference how the numbers changed to avoid losing too much data. All these `.csv` files should have the following format:
+# Run the analysis with default configuration
+results <- main()
 
-- **`accession`**: The current name of the protein through the analysis.
-- **`IPGI`**: The protein accession you provided as input, which resulted in the `accession`.
-- **`identity`**: Specifies how the amino acid sequence of the PIGI relates to that of the `accession`. For the `ipg_` and `pdb_` files, this can be omitted since it is expected to be 1. For the `cluster` files, this can be anything between 0.9 to 1 (depending on what you specified in your CD-Hit run as the cutoff).
+# Run with custom configuration file
+results <- main("path/to/your/config.yaml")
 
-### COG files
-- PATH/classification/COG/cog_*hitdata.txt: File(s) created by XXX webserver to generate annotation of genes.
+# Override specific parameters
+results <- main(override_params = list(
+  "analysis.basepairs" = 500,
+  "analysis.max_neighbors" = 20,
+  "annotation.tool" = "eggnog"
+))
+```
 
-## Parameters
+## Configuration
 
-- **BASEPAIRS**: The maximum distance in base pairs between two proteins to consider them as neighbors. Default is `300`.
-- **MAX_NEIGHBORS**: The maximum number of neighboring proteins to consider. Default is `15`.
-- **protein_of_interest**: The specific protein to focus on for closer analysis. This parameter is optional.
-- **PATH**: The directory path to your input files. Default is `'data'`.
+The package uses a YAML configuration file for all parameters. You can customize the analysis by:
 
+1. Editing the default config file at `config/config.yaml`
+2. Creating your own config file and specifying it with `main("path/to/config.yaml")`
+3. Overriding specific parameters with the `override_params` argument
+
+### Key Configuration Parameters
+
+```yaml
+# Analysis parameters
+analysis:
+  basepairs: 300                     # Distance in base pairs to consider for neighbors
+  max_neighbors: 15                  # Maximum number of neighbors to identify
+  protein_of_interest: null          # Default to null, can be set at runtime
+
+# Annotation settings
+annotation:
+  tool: "eggnog"                     # Tool to use for annotation: "eggnog" or "cog"
+  eggnog:
+    db_dir: "data/eggnog_db"         # Path to eggNOG database
+    cpu: 4                           # Number of CPUs to use
+```
+
+See the full `config.yaml` file for all available options.
+
+## Data Requirements
+
+### Required Files
+
+Place the following files in the directory specified by `paths.base_dir` (default: `data/`):
+
+- `proteins.csv`: List of protein accession numbers
+- `assm_accs.csv`: List of assembly accession numbers
+- `assm_accs_protein.csv`: Mapping between proteins and assemblies
+
+### GFF Files
+
+The package expects GFF3 files for each assembly in:
+
+```
+{paths.base_dir}/ncbi_dataset/data/{assembly_id}/genomic.gff
+```
+
+You can download these files using NCBI Datasets:
+
+```bash
+datasets download genome accession --inputfile assm_accs.csv --include gff3
+```
+
+### Optional Files
+
+#### Clade Files
+
+Create a `clades` folder with files for each clade:
+
+```
+{paths.base_dir}/clades/Clade*.txt
+```
+
+#### Representative Files
+
+For protein alias mapping:
+
+```
+{paths.base_dir}/representatives/ipg_representative.txt
+{paths.base_dir}/representatives/pdb_representative.txt
+{paths.base_dir}/representatives/cluster_representative.txt
+```
 
 ## Outputs
-The outputs are saved in a folder named with the current date. If you want to run multiple analyses, please rename the previously created folder before running the script again to avoid overwriting the output files. 
 
-The script generates multiple CSV files containing information about the neighboring proteins and other relevant data. It also produces plots showing the number of proteins per type per clade. 
+The package generates outputs in a directory named with the current date (or specified date):
 
-For more concise plots, you can specify short names for proteins in the `output/YYYY-MM-DD/types_of_neighbours_annotated.csv` file. The program will initially export a `output/YYYY-MM-DD/types_of_neighbours.csv` file. You can then annotate this file in the third column with names or abbreviations as needed and save it as `types_of_neighbours_annotated.csv`.
- 
+```
+output/{date}/
+├── all_neighbours_bp{basepairs}_n{max_neighbors}.csv   # Neighbor information
+├── all_protein_info.csv                               # Protein information
+├── analysis_config.yaml                               # Configuration used
+├── input_file_info.csv                                # Input file metadata
+├── analysis_report.html                               # HTML report
+├── eggnog/                                            # eggNOG annotation results
+├── types_of_neighbours.csv                            # Neighbor type counts
+└── various plot files (PNG, SVG)                      # Visualizations
+```
 
-## Usage
+### Visualization Examples
 
-1. Ensure all required data files are available and placed in the specified directories and all required R libraries are installed.
-2. Open `00_main.R` and modify the `main()` function at the bottom of the script to include your desired parameters.
-3. Run the script. After execution, a `types_of_neighbours.csv` file will be generated.
-4. (Optional) Annotate the `types_of_neighbours.csv` file as needed and rerun the script. The rerun will be faster since the neighboring proteins have already been calculated and will be reloaded.
+- Distribution of neighbors by clade
+- Correlation matrix of clade co-occurrence
+- Histograms of protein distribution
+- Annotation type distribution
 
-Happy analyzing!
+## Advanced Usage
 
+### Manual Annotation
 
+1. Run the initial analysis
+2. Examine `output/{date}/types_of_neighbours.csv`
+3. Create an annotated version named `types_of_neighbours_annotated.csv` with your classification in the 4th column
+4. Re-run the analysis to incorporate your annotations
+
+### Creating Custom Plots
+
+The package provides several plotting functions you can use directly:
+
+```r
+# Plot neighbors for a specific protein
+plot_neighbours(all_neighbours, "YP_123456.1")
+
+# Plot neighbors per clade with custom options
+plot_neighbours_per_clade(combined_df, exclude_unknown_clade = TRUE, plot_count_codh = TRUE)
+
+# Create a correlation matrix
+make_correlation_matrix(df, clade_vector)
+
+# Create histograms for clades
+create_clade_histograms2(df)
+```
+
+## Troubleshooting
+
+### Common Issues
+
+- **Missing GFF files**: Ensure assembly GFF files are in the correct location
+- **Protein not found**: Check protein accession numbers and use representative mapping
+- **eggNOG-mapper errors**: Verify eggNOG installation and database files
+- **Memory issues**: Reduce the number of proteins or assemblies being analyzed
+
+### Logging
+
+The package uses the logger package for detailed logging. To enable debugging:
+
+```r
+# In your config.yaml
+logging:
+  level: "DEBUG"  # Options: DEBUG, INFO, WARNING, ERROR
+  file: "protein_neighbors.log"
+```
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit issues or pull requests.
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Acknowledgments
+
+- Original development by Maximilian Böhm
+- eggNOG-mapper for protein annotation
+- NCBI for genome data and protein information
+
+---
+
+For more detailed documentation, see the vignettes and function documentation within the package.
