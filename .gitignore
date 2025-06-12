@@ -13,10 +13,17 @@
 *.pdf
 .Rhistory
 
-# ignroing some R stuff
-.Rproj.user/
+# Package build artifacts
+.DS_Store
+*.tar.gz
+*.Rcheck/
+.Rbuildignore
+
+# R and RStudio files
 .Rhistory
 .RData
+.Ruserdata
+.Rproj.user/
 *.Rproj
 
 # Specific things to ignore
@@ -37,3 +44,6 @@ config/*.bak
 # OS files
 .DS_Store
 Thumbs.db
+
+# VS Code settings (optional, if you use VS Code)
+.vscode/
