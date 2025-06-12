@@ -15,6 +15,7 @@ library(gggenes)
 library(ggplot2)
 library(RColorBrewer)
 library(yaml) # For configuration
+library(rmarkdown) # For report generation
 
 # Source R scripts
 source('R/utils.R')        # Utility functions including configuration
@@ -302,7 +303,7 @@ generate_analysis_report <- function(combined_df, config, output_dir) {
   
   if (!file.exists(report_template)) {
     # If not found in package, use local template
-    report_template <- "inst/rmd/analysis_report.Rmd"
+    report_template <- file.path(getwd(), "inst/rmd/analysis_report.Rmd")
     if (!file.exists(report_template)) {
       pn_warn("Report template not found. Skipping report generation.")
       return(NULL)
