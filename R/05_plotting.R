@@ -534,9 +534,6 @@ create_clade_histograms2 <- function(fasta_data,
     filtered_data <- suppressMessages(suppressWarnings(reshape2::melt(fasta_data.matrix))) %>%
       dplyr::filter(value > 0)
     
-    # Determine the number of clades dynamically
-    num_clades <- length(unique(fasta_data$clade))
-    
     # Create a histogram for each clade
     clade_histogram <- ggplot2::ggplot(filtered_data, 
                                      ggplot2::aes(x = value, fill = variable)) + 

@@ -3,6 +3,7 @@
 #' This file contains functions for identifying neighboring proteins
 #' in genomic data, parsing GFF files, and extracting attributes.
 #'
+#' @importFrom dplyr %>%
 #' @author Maximilian Böhm
 #' @modified Improved version with enhanced documentation and error handling
 
@@ -409,7 +410,7 @@ data.frame2fasta <- function(df, name_vector, sequence_column = "seq", output_fi
   
   # Create FASTA format
   tryCatch({
-    fasta_lines <- do.call(rbind, lapply(seq(nrow(df2)), function(i) t(df2[i, ])))
+    fasta_lines <- do.call(rbind, lapply(seq_len(nrow(df2)), function(i) t(df2[i, ])))
     write.table(fasta_lines, row.names = FALSE, col.names = FALSE, quote = FALSE, file = output_file)
     pn_info("Successfully wrote FASTA file with", nrow(df2), "sequences")
   }, error = function(e) {

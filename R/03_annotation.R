@@ -2,7 +2,8 @@
 #'
 #' Functions for annotating proteins using eggNOG-mapper or alternative methods.
 #'
-#' @author Protein Neighbors Package
+#' @importFrom dplyr %>%
+#' @author Maximilian Böhm
 
 #' Clean up eggNOG output files for a fresh run
 #'
@@ -468,7 +469,7 @@ S	POORLY CHARACTERIZED	Function unknown
   # Debug: Check first few lines
   first_lines <- readLines(annotations_file, n = 20)
   pn_info("First few lines of eggNOG annotations file:")
-  for (i in 1:min(10, length(first_lines))) {
+  for (i in seq_len(min(10, length(first_lines)))) {
     pn_info(first_lines[i])
   }
   
@@ -508,10 +509,8 @@ S	POORLY CHARACTERIZED	Function unknown
     pn_info("Columns found:", paste(colnames(annotations), collapse=", "))
     
     # Check if we have COG categories
-    has_cog_categories <- FALSE
     if ("COG_category" %in% colnames(annotations)) {
       pn_info("Found COG_category column")
-      has_cog_categories <- TRUE
     } else {
       pn_warn("No COG_category column found in eggNOG annotations")
       # Try alternative column names that might contain COG categories
@@ -520,17 +519,14 @@ S	POORLY CHARACTERIZED	Function unknown
         if (col %in% colnames(annotations)) {
           pn_info(paste("Using", col, "column instead of COG_category"))
           colnames(annotations)[colnames(annotations) == col] <- "COG_category"
-          has_cog_categories <- TRUE
           break
         }
       }
     }
     
     # Check if we have Description
-    has_description <- FALSE
     if ("Description" %in% colnames(annotations)) {
       pn_info("Found Description column")
-      has_description <- TRUE
     } else {
       pn_warn("No Description column found in eggNOG annotations")
       # Try alternative column names that might contain descriptions
@@ -539,7 +535,6 @@ S	POORLY CHARACTERIZED	Function unknown
         if (col %in% colnames(annotations)) {
           pn_info(paste("Using", col, "column instead of Description"))
           colnames(annotations)[colnames(annotations) == col] <- "Description"
-          has_description <- TRUE
           break
         }
       }
@@ -768,7 +763,7 @@ create_dummy_annotations <- function(protein_ids, output_dir) {
     
     for (i in 1:num_cogs) {
       # Randomly select a COG category
-      cog_idx <- sample(1:nrow(cog_categories), 1)
+      cog_idx <- sample(seq_len(nrow(cog_categories)), 1)
       
       # Create a random COG ID
       cog_id <- paste0("COG", sprintf("%04d", sample(1:9999, 1)))

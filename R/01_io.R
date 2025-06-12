@@ -19,36 +19,36 @@
 #' @param protein_of_interest Optional protein ID to use (overrides prompt).
 #' @return A list containing the protein, assembly, and protein assembly data frames.
 #' @export
-read_protein_assembly_data <- function(protein_file = 'proteins.csv', 
-                                       assembly_file = 'assm_accs.csv', 
-                                       protein_assembly_file = 'assm_accs_protein.csv',
-                                       PATH = 'data',
+read_protein_assembly_data <- function(protein_file = "proteins.csv", 
+                                       assembly_file = "assm_accs.csv", 
+                                       protein_assembly_file = "assm_accs_protein.csv",
+                                       PATH = "data",
                                        interactive = TRUE,
                                        protein_of_interest = NULL) {
   # Log reading of data
   pn_info("Reading protein and assembly data from:", PATH)
-  
+
   # Construct full paths
   protein_path <- file.path(PATH, protein_file)
   assembly_path <- file.path(PATH, assembly_file)
   protein_assembly_path <- file.path(PATH, protein_assembly_file)
-  
+
   # Check if files exist
   if (!file.exists(protein_path)) {
     pn_error("Protein file not found:", protein_path)
     stop(paste("Protein file not found:", protein_path))
   }
-  
+
   if (!file.exists(assembly_path)) {
     pn_error("Assembly file not found:", assembly_path)
     stop(paste("Assembly file not found:", assembly_path))
   }
-  
+
   if (!file.exists(protein_assembly_path)) {
     pn_error("Protein-assembly mapping file not found:", protein_assembly_path)
     stop(paste("Protein-assembly mapping file not found:", protein_assembly_path))
   }
-  
+
   # Read files
   tryCatch({
     protein <- read.csv(protein_path, header = FALSE, stringsAsFactors = FALSE)
@@ -57,7 +57,7 @@ read_protein_assembly_data <- function(protein_file = 'proteins.csv',
     pn_error("Failed to read protein file:", e$message)
     stop(paste("Failed to read protein file:", e$message))
   })
-  
+
   tryCatch({
     assembly <- read.csv(assembly_path, header = FALSE, stringsAsFactors = FALSE)
     pn_info("Read", nrow(assembly), "assemblies from", assembly_path)
@@ -65,7 +65,7 @@ read_protein_assembly_data <- function(protein_file = 'proteins.csv',
     pn_error("Failed to read assembly file:", e$message)
     stop(paste("Failed to read assembly file:", e$message))
   })
-  
+
   tryCatch({
     protein_assembly <- read.csv(protein_assembly_path, header = FALSE, stringsAsFactors = FALSE)
     pn_info("Read", nrow(protein_assembly), "protein-assembly mappings from", protein_assembly_path)
@@ -73,7 +73,7 @@ read_protein_assembly_data <- function(protein_file = 'proteins.csv',
     pn_error("Failed to read protein-assembly file:", e$message)
     stop(paste("Failed to read protein-assembly file:", e$message))
   })
-  
+
   # Get protein of interest
   if (is.null(protein_of_interest) && interactive) {
     protein_of_interest <- readline(prompt = "Enter the Accession Number of protein of interest: ")
@@ -83,10 +83,10 @@ read_protein_assembly_data <- function(protein_file = 'proteins.csv',
   } else {
     pn_info("Using specified protein of interest:", protein_of_interest)
   }
-  
-  return(list(protein_of_interest = protein_of_interest, 
-              protein = protein, 
-              assembly = assembly, 
+
+  return(list(protein_of_interest = protein_of_interest,
+              protein = protein,
+              assembly = assembly,
               protein_assembly = protein_assembly))
 }
 
@@ -99,53 +99,53 @@ read_protein_assembly_data <- function(protein_file = 'proteins.csv',
 #' @param pattern The pattern to match clade files.
 #' @return A data frame with clade assignments, or an empty data frame if no clade files are found.
 #' @export
-read_clades <- function(PATH = 'data', clade_dir = 'clades', pattern = "^[C]") {
+read_clades <- function(PATH = "data", clade_dir = "clades", pattern = "^[C]") {
   # Log start of clade reading
   pn_info("Reading clade information from:", file.path(PATH, clade_dir))
   pn_info("Using pattern:", pattern)
-  
+
   # Load protein alias data
   PROTEIN_ALIAS <- read_representatives(PATH = PATH)
   clade_path <- file.path(PATH, clade_dir)
-  
+
   # Check if clade directory exists
   if (!dir.exists(clade_path)) {
     pn_warn("Clade directory not found:", clade_path)
     return(data.frame(protein.id = character(), clade = character(), PIGI = character(), stringsAsFactors = FALSE))
   }
-  
+
   # Get list of clade files
   clade_files <- list.files(clade_path, pattern = pattern, full.names = TRUE)
-  
+
   # Check if any clade files are found
   if (length(clade_files) == 0) {
     pn_warn("No clade files found matching pattern:", pattern)
     return(data.frame(protein.id = character(), clade = character(), PIGI = character(), stringsAsFactors = FALSE))
   }
-  
+
   # Log the files found
   pn_info("Found", length(clade_files), "clade files")
   for (file in clade_files) {
     pn_debug("Clade file:", basename(file))
   }
-  
+
   # Apply the function to each file and clade, then bind rows
   tryCatch({
-    clade_assign <- purrr::map2_df(clade_files, LETTERS[1:length(clade_files)], process_clade_file)
+    clade_assign <- purrr::map2_df(clade_files, LETTERS[seq_along(clade_files)], process_clade_file)
     pn_info("Processed", nrow(clade_assign), "entries from clade files")
-    
+
     # Add PIGI information
     clade_assign$PIGI <- unlist(purrr::flatten(lapply(clade_assign$protein.id, function(i) { 
       protein.alias(i, alias = PROTEIN_ALIAS, verbose = FALSE)[1, 1] 
     })))
-    
+
     pn_info("Added PIGI information to clade assignments")
-    
+
   }, error = function(e) {
     pn_error("Failed to process clade files:", e$message)
     return(data.frame(protein.id = character(), clade = character(), PIGI = character(), stringsAsFactors = FALSE))
   })
-  
+
   return(clade_assign)
 }
 
@@ -159,18 +159,18 @@ read_clades <- function(PATH = 'data', clade_dir = 'clades', pattern = "^[C]") {
 #' @export
 process_clade_file <- function(file, clade) {
   pn_debug("Processing clade file:", file, "with clade ID:", clade)
-  
+
   tryCatch({
     # Read the file and extract protein IDs
-    data <- readr::read_delim(file, col_names = c('protein.id','V2','V3','V4'), 
-                          delim="/", show_col_types = FALSE)
-    data <- data %>%
+    data <- readr::read_delim(file, col_names = c("protein.id", "V2", "V3", "V4"),
+                              delim = "/", show_col_types = FALSE)
+    data <- data%>%
       dplyr::select(protein.id) %>%
       dplyr::mutate(clade = clade)
-    
+
     pn_debug("Extracted", nrow(data), "proteins from clade", clade)
     return(data)
-    
+
   }, error = function(e) {
     pn_error("Failed to process clade file:", file, "-", e$message)
     return(data.frame(protein.id = character(), clade = character(), stringsAsFactors = FALSE))
@@ -193,16 +193,16 @@ read_representatives <- function(PATH = 'data',
                                  ipg_file = 'ipg_representative.txt', 
                                  pdb_file = 'pdb_representative.txt', 
                                  cluster_file = 'cluster_representative.txt') {
-  
+
   pn_info("Reading protein representatives from:", file.path(PATH, path))
   rep_path <- file.path(PATH, path)
-  
+
   # Check if representatives directory exists
   if (!dir.exists(rep_path)) {
     pn_warn("Representatives directory not found:", rep_path)
     return(data.frame(alias = character(), PIGI = character(), identity = numeric(), stringsAsFactors = FALSE))
   }
-  
+
   # Helper function to read alias files
   read_alias_file <- function(file_name, col_names) {
     file_path <- file.path(rep_path, file_name)
@@ -221,7 +221,7 @@ read_representatives <- function(PATH = 'data',
       return(NULL)
     }
   }
-  
+
   # Read the IPG alias data
   ipg_alias <- read_alias_file(ipg_file, c('PIGI', 'alias'))
   if (!is.null(ipg_alias)) {

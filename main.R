@@ -18,12 +18,12 @@ library(yaml) # For configuration
 library(rmarkdown) # For report generation
 
 # Source R scripts
-source('R/utils.R')        # Utility functions including configuration
-source('R/01_io.R')        # Input/output functions
-source('R/02_neighbors.R') # Neighbor identification functions
-source('R/03_annotation.R')# Annotation functions
-source('R/04_analysis.R')  # Analysis functions
-source('R/05_plotting.R')  # Visualization functions
+source("R/utils.R")        # Utility functions including configuration # nolint
+source("R/01_io.R")        # Input/output functions
+source("R/02_neighbors.R") # Neighbor identification functions
+source("R/03_annotation.R")# Annotation functions
+source("R/04_analysis.R")  # Analysis functions
+source("R/05_plotting.R")  # Visualization functions
 
 #' Main function to run the protein neighborhood analysis
 #'
@@ -42,8 +42,6 @@ main <- function(config_file = "config/config.yaml", override_params = NULL) {
   pn_info("Starting protein neighborhood analysis")
   pn_info(paste("Using configuration file:", config_file))
   
-  # Log input file information for reproducibility
-  input_file_info <- pn_input_files(config)
   
   # Create output directory for the current date
   current_date <- config$analysis$date
@@ -74,7 +72,6 @@ main <- function(config_file = "config/config.yaml", override_params = NULL) {
   
   # Access the variables
   protein_of_interest <- protein_assembly_data$protein_of_interest
-  protein <- protein_assembly_data$protein
   assembly <- protein_assembly_data$assembly
   protein_assembly <- protein_assembly_data$protein_assembly
   
@@ -91,11 +88,11 @@ main <- function(config_file = "config/config.yaml", override_params = NULL) {
   # Check if the output files exist and if they're already present, read them
   if (file.exists(output_file_neighbours)) {
     pn_info("Reading existing neighbor data from file")
-    all_neighbours <- read_csv(output_file_neighbours)
+    all_neighbours <- readr::read_csv(output_file_neighbours)
     
     if(file.exists(output_file_proteins)) {
       pn_info("Reading existing protein data from file")
-      all_protein <- read_csv(output_file_proteins)
+      all_protein <- readr::read_csv(output_file_proteins)
     } else {
       pn_info("Collecting protein information")
       all_protein <- collect_all_protein_info(protein_assembly, PATH = config$paths$base_dir)
@@ -116,8 +113,8 @@ main <- function(config_file = "config/config.yaml", override_params = NULL) {
     
     # Save the results
     pn_info("Saving neighbor and protein data")
-    write_csv(all_neighbours, output_file_neighbours)
-    write_csv(all_protein, output_file_proteins)
+    readr::write_csv(all_neighbours, output_file_neighbours)
+    readr::write_csv(all_protein, output_file_proteins)
   }
   
   # Combine all data
@@ -190,7 +187,7 @@ main <- function(config_file = "config/config.yaml", override_params = NULL) {
   pn_info("Generating correlation matrix")
   make_correlation_matrix(
     combined_df %>%
-      select(PIGI, assembly, clade) %>%
+      select(PIGI, assembly, clade) %>% # nolint
       unique() %>%
       select(assembly, clade), 
     unique(combined_df$clade)
@@ -200,7 +197,7 @@ main <- function(config_file = "config/config.yaml", override_params = NULL) {
   pn_info("Generating clade histograms")
   create_clade_histograms2(
     combined_df %>%
-      select(PIGI, assembly, clade) %>%
+      select(PIGI, assembly, clade) %>% # nolint: object_usage_linter.
       unique(),
     clade_colors = config$visualization$clade_colors
   )
@@ -209,38 +206,38 @@ main <- function(config_file = "config/config.yaml", override_params = NULL) {
   if (!is.null(annotated_neighbours) && nrow(annotated_neighbours) > 0) {
     pn_info("Generating plots with manual annotations")
     plot_neighbours_per_clade(
-      combined_df %>% mutate(COG_LETTER = ANNOTATION), 
-      exclude_unknown_clade = TRUE, 
-      exclude_unknown_cog = TRUE, 
+      combined_df %>% mutate(COG_LETTER = ANNOTATION),  # nolint
+      exclude_unknown_clade = TRUE,
+            exclude_unknown_cog = TRUE, 
       output_path = "annotated_neighbours"
     )
-    
+
     plot_neighbours_per_clade(
-      combined_df %>% mutate(COG_LETTER = ANNOTATION), 
+      combined_df %>% mutate(COG_LETTER = ANNOTATION),  # nolint: object_usage_linter.
       output_path = "annotated_neighbours"
     )
-    
+
     plot_neighbours_per_clade(
-      combined_df %>% mutate(COG_LETTER = ANNOTATION), 
-      exclude_unknown_clade = TRUE, 
-      exclude_unknown_cog = TRUE, 
-      output_path = "annotated_neighbours", 
+      combined_df %>% mutate(COG_LETTER = ANNOTATION),  # nolint
+      exclude_unknown_clade = TRUE,
+      exclude_unknown_cog = TRUE,
+      output_path = "annotated_neighbours",
       plot_count_codh = TRUE
     )
-    
+
     plot_neighbours_per_clade(
-      combined_df %>% mutate(COG_LETTER = ANNOTATION), 
-      output_path = "annotated_neighbours", 
+      combined_df %>% mutate(COG_LETTER = ANNOTATION),  # nolint
+      output_path = "annotated_neighbours",
       plot_count_codh = TRUE
     )
   }
-  
+
   # Generate HTML report of the analysis
   pn_info("Generating analysis report")
   generate_analysis_report(combined_df, config, output_dir)
-  
+
   pn_info("Analysis complete. Results available in", output_dir)
-  
+
   # Return the combined data frame and other important objects
   return(list(
     combined_df = combined_df,
@@ -266,11 +263,11 @@ generate_analysis_report <- function(combined_df, config, output_dir) {
     pn_warn("Package 'rmarkdown' is needed for report generation. Skipping report.")
     return(NULL)
   }
-  
+
   # Add more detailed directory creation debugging
   cat("Attempting to create directory:", output_dir, "\n")
   cat("Current working directory:", getwd(), "\n")
-  
+
   # Try absolute path if relative path fails
   if (!dir.exists(output_dir)) {
     tryCatch({
@@ -282,11 +279,11 @@ generate_analysis_report <- function(combined_df, config, output_dir) {
       cat("Error during directory creation:", e$message, "\n")
     })
   }
-  
+
   # Verify directory existence with full path
   full_output_dir <- normalizePath(output_dir, mustWork = FALSE)
   cat("Normalized output directory path:", full_output_dir, "\n")
-  
+
   if (!dir.exists(full_output_dir)) {
     tryCatch({
       dir.create(full_output_dir, recursive = TRUE)
@@ -297,10 +294,10 @@ generate_analysis_report <- function(combined_df, config, output_dir) {
       cat("Error with normalized path:", e$message, "\n")
     })
   }
-  
+
   # Create the report template path logic
   report_template <- system.file("rmd", "analysis_report.Rmd", package = "proteinNeighbours")
-  
+
   if (!file.exists(report_template)) {
     # If not found in package, use local template
     report_template <- file.path(getwd(), "inst/rmd/analysis_report.Rmd")
@@ -309,15 +306,15 @@ generate_analysis_report <- function(combined_df, config, output_dir) {
       return(NULL)
     }
   }
-  
+
   # Verify directory existence again
   if (!dir.exists(output_dir)) {
     stop("Unable to create output directory: ", output_dir)
   }
-  
+
   # Generate the report
   report_file <- file.path(output_dir, "analysis_report.html")
-  
+
   tryCatch({
     rmarkdown::render(
       input = report_template,
@@ -333,7 +330,7 @@ generate_analysis_report <- function(combined_df, config, output_dir) {
   }, error = function(e) {
     pn_error("Failed to generate analysis report:", e$message)
   })
-  
+
   return(report_file)
 }
 

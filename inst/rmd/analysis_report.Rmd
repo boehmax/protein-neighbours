@@ -27,7 +27,7 @@ combined_df <- params$combined_df
 config <- params$config
 output_dir <- params$output_dir
 
-  # Create the directory if it doesn't exist
+# Create the directory if it doesn't exist
   if (!dir.exists(output_dir)) {
     dir.create(output_dir, recursive = TRUE)
   }
@@ -129,7 +129,7 @@ if ("COG_LETTER" %in% colnames(combined_df)) {
     count(COG_LETTER) %>%
     arrange(desc(n)) %>%
     mutate(COG_LETTER = factor(COG_LETTER, levels = COG_LETTER))
-  
+
   ggplot(neighbor_type_dist, aes(x = reorder(COG_LETTER, n), y = n, fill = COG_LETTER)) +
     geom_bar(stat = "identity") +
     coord_flip() +
@@ -164,7 +164,7 @@ if ("COG_LETTER" %in% colnames(combined_df) && "COG_NAME" %in% colnames(combined
     count(COG_LETTER, COG_NAME) %>%
     arrange(desc(n)) %>%
     head(20)
-  
+
   kable(annotation_summary, caption = "Top 20 Annotation Categories")
 } else {
   cat("Annotation category information not available.")
@@ -180,10 +180,10 @@ if (nrow(combined_df) > 0) {
     filter(!is.neighbour) %>%
     distinct(PIGI) %>%
     sample_n(min(5, nrow(.)))
-  
+
   sample_data <- combined_df %>%
     filter(PIGI %in% sample_proteins$PIGI)
-  
+
   DT::datatable(
     sample_data %>% select(PIGI, ID, clade, assembly, is.neighbour),
     caption = "Sample Proteins and Their Neighbors",
@@ -204,19 +204,19 @@ plot_files <- list.files(output_dir, pattern = "\\.(png|svg)$", full.names = TRU
 
 if (length(plot_files) > 0) {
   cat("## Available Plots\n\n")
-  
+
   for (plot_file in plot_files) {
     plot_name <- basename(plot_file)
     cat(sprintf("- %s\n", plot_name))
   }
-  
+
   # Display a few example plots
   png_files <- list.files(output_dir, pattern = "\\.png$", full.names = TRUE)
-  
+
   if (length(png_files) > 0) {
     cat("\n## Example Visualizations\n\n")
-    
-    for (i in 1:min(3, length(png_files))) {
+
+    for (i in seq_len(min(3, length(png_files)))) {
       cat(sprintf("### %s\n\n", basename(png_files[i])))
       cat(sprintf("![%s](%s)\n\n", basename(png_files[i]), png_files[i]))
     }

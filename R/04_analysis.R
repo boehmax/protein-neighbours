@@ -3,6 +3,7 @@
 #' This file contains functions for analyzing protein neighbors,
 #' combining data, and calculating statistics.
 #'
+#' @importFrom dplyr %>%
 #' @author Maximilian Böhm
 #' @modified Improved version with enhanced documentation and error handling
 

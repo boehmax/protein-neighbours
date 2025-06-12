@@ -149,7 +149,7 @@ pn_input_files <- function(config) {
   
   # Log file information
   pn_info("Input file information saved to input_file_info.csv")
-  for (i in 1:nrow(file_info)) {
+  for (i in seq_len(nrow(file_info))) {
     if (file_info$Exists[i]) {
       pn_info(sprintf("File: %s, Size: %d bytes, Modified: %s", 
                       file_info$File[i], file_info$Size_bytes[i], file_info$Modified[i]))
