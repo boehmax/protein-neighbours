@@ -3,6 +3,7 @@
 #' This file contains functions for reading and writing data files,
 #' including protein and assembly data, clades, and representative proteins.
 #'
+#' @importFrom dplyr %>%
 #' @author Maximilian Böhm
 #' @modified Improved version with enhanced documentation and error handling
 
