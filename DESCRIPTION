@@ -1,7 +1,7 @@
 Package: proteinNeighbours
 Type: Package
 Title: A Package for Protein Neighbour Analysis
-Version: 0.1.0
+Version: 0.2.0
 Author: Maximilian Böhm
 Maintainer: Maximilian Böhm <maximilian.bohm@kemi.uu.se>
 Description: This package provides functions for analyzing the genomic environment of proteins.

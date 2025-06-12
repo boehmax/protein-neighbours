@@ -2,6 +2,8 @@
 
 A comprehensive R package for analyzing the genomic neighborhood of proteins. This package examines neighboring proteins, annotates them using eggNOG-mapper, and visualizes the results to provide insights into genomic context and potential functional relationships.
 
+Note: In the current version the automated report generation is not available. We are working to reolve this issue.
+
 ## Overview
 
 This package explores and analyzes the genomic environment of proteins by:
@@ -33,35 +35,42 @@ This package explores and analyzes the genomic environment of proteins by:
   - Installation: [eggNOG-mapper Documentation](http://eggnog-mapper.embl.de/)
   - `pip install eggnog-mapper`
 
-### Installing the Package
+### Installing
 
-```r
-# Install from GitHub
-devtools::install_github("yourusername/protein-neighbours")
+Clone this repository and set your working directory to the project folder in R.
 
-# Or install from local directory
-install.packages("path/to/protein-neighbours", repos = NULL, type = "source")
-```
 
-## Quick Start
+## Running the Pipeline
 
-```r
-# Load the package
-library(proteinNeighbours)
+1. **Source the main script:**
 
-# Run the analysis with default configuration
-results <- main()
+    ```r
+    source("main.R")
+    ```
 
-# Run with custom configuration file
-results <- main("path/to/your/config.yaml")
+2. **Run the analysis with default configuration:**
 
-# Override specific parameters
-results <- main(override_params = list(
-  "analysis.basepairs" = 500,
-  "analysis.max_neighbors" = 20,
-  "annotation.tool" = "eggnog"
-))
-```
+    ```r
+    results <- main()
+    ```
+
+3. **Run with a custom configuration file:**
+
+    ```r
+    results <- main("path/to/your/config.yaml")
+    ```
+
+4. **Override specific parameters directly:**
+
+    ```r
+    results <- main(override_params = list(
+      "analysis.basepairs" = 500,
+      "analysis.max_neighbors" = 20,
+      "annotation.tool" = "eggnog"
+    ))
+    ```
+
+---
 
 ## Configuration
 
@@ -92,7 +101,7 @@ See the full `config.yaml` file for all available options.
 
 ## Data Requirements
 
-### Required Files
+### Required CSV Files
 
 Place the following files in the directory specified by `paths.base_dir` (default: `data/`):
 
@@ -100,7 +109,7 @@ Place the following files in the directory specified by `paths.base_dir` (defaul
 - `assm_accs.csv`: List of assembly accession numbers
 - `assm_accs_protein.csv`: Mapping between proteins and assemblies
 
-### GFF Files
+### Required Genome Files
 
 The package expects GFF3 files for each assembly in:
 
@@ -113,6 +122,7 @@ You can download these files using NCBI Datasets:
 ```bash
 datasets download genome accession --inputfile assm_accs.csv --include gff3
 ```
+or check out my other repository: https://github.com/boehmax/protein-to-genome which I built this pipline on.
 
 ### Optional Files
 
@@ -133,6 +143,11 @@ For protein alias mapping:
 {paths.base_dir}/representatives/pdb_representative.txt
 {paths.base_dir}/representatives/cluster_representative.txt
 ```
+
+These files are tables that mapp accession numbers with other identifiers. 
+- 'ipg_representative.txt' you will get from boehmax/protein-to-genome, and makes sure that accessions from identical proteins are connected via one overarchning accesion number
+- 'pdb_representative.txt' you would need to wirte manually, to make sure that pdb ids are mapped to NCBI accession numbers
+- 'cluster_representative.txt' could be generated after running CD-hit on a protein file, to make sure that accession numbers from a cluster all are connected via one overarching accesion number (a script to generate this file is part of boehmax/protein-per-organism, https://github.com/boehmax/protein-per-organism/blob/main/cluster_alias.sh)
 
 ## Outputs
 
@@ -165,10 +180,11 @@ output/{date}/
 2. Examine `output/{date}/types_of_neighbours.csv`
 3. Create an annotated version named `types_of_neighbours_annotated.csv` with your classification in the 4th column
 4. Re-run the analysis to incorporate your annotations
+5. If done on different date, change folder name to appropriate date.
 
 ### Creating Custom Plots
 
-The package provides several plotting functions you can use directly:
+After a succesfull run the package provides several plotting functions you can use directly:
 
 ```r
 # Plot neighbors for a specific protein

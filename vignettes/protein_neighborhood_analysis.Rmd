@@ -34,18 +34,6 @@ This vignette walks you through a complete analysis workflow, from data preparat
 
 # Installation
 
-## Package Installation
-
-You can install the package from GitHub:
-
-```{r installation, eval = FALSE}
-# Install from GitHub
-devtools::install_github("username/protein-neighbours")
-
-# Or install from a local directory
-install.packages("path/to/protein-neighbours", repos = NULL, type = "source")
-```
-
 ## Dependencies
 
 The package has several dependencies that need to be installed:
@@ -83,7 +71,13 @@ pip install eggnog-mapper
 
 ## Data Preparation
 
-Before running an analysis, you need to prepare several input files:
+Before running an analysis, you need to prepare several input files.
+These files are generated when following the overall pipe line of repositories illustrated bellow:
+1. protein-per-organism
+2. protein-to-genome
+3. protein-neighbours
+
+The files need to be collected and placed in a specific directory structure. The default data directory is `data/`, but you can change this in the configuration file.
 
 ### Required Files
 
@@ -107,7 +101,7 @@ You can download these files from NCBI using the datasets command-line tool:
 datasets download genome accession --inputfile assm_accs.csv --include gff3
 unzip ncbi_dataset.zip -d data/
 ```
-
+Alternatively, use my pipe line to download the GFF files automatically. (protein-to-genome repository)
 ### Optional Files
 
 For advanced analyses, you can create these additional files:
@@ -139,7 +133,7 @@ data/representatives/cluster_representative.txt
 Here's a simple example of running an analysis:
 
 ```{r basic-usage, eval = FALSE}
-library(proteinNeighbours)
+source(main.R)
 
 # Run with default settings
 results <- main()
