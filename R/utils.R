@@ -99,7 +99,11 @@ save_config <- function(config, output_dir) {
   config$metadata <- list(
     created_on = format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z"),
     r_version = R.version.string,
-    package_version = utils::packageVersion("proteinNeighbours")
+    package_version = tryCatch({
+      as.character(utils::packageVersion("proteinNeighbours"))
+    }, error = function(e) {
+      "0.2.0"  # Fallback version
+    })
   )
   
   # Save the configuration to the output directory
