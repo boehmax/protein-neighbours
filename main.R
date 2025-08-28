@@ -38,6 +38,9 @@ main <- function(config_file = "config/config.yaml", override_params = NULL) {
   # Set up logging
   pn_setup_logging(config)
   
+  # Set reproducible seed
+  set_reproducible_seed(config)
+  
   # Log start of analysis and input file information
   pn_info("Starting protein neighborhood analysis")
   pn_info(paste("Using configuration file:", config_file))
@@ -168,20 +171,22 @@ main <- function(config_file = "config/config.yaml", override_params = NULL) {
   plot_neighbours_per_clade(
     combined_df, 
     exclude_unknown_clade = config$visualization$exclude_unknown_clade, 
-    exclude_unknown_cog = config$visualization$exclude_unknown_cog
+    exclude_unknown_cog = config$visualization$exclude_unknown_cog,
+    config = config
   )
   
-  plot_neighbours_per_clade(combined_df)
+  plot_neighbours_per_clade(combined_df, config = config)
   
   # Plots with CODH count
   plot_neighbours_per_clade(
     combined_df, 
     exclude_unknown_clade = config$visualization$exclude_unknown_clade, 
     exclude_unknown_cog = config$visualization$exclude_unknown_cog, 
-    plot_count_codh = TRUE
+    plot_count_codh = TRUE,
+    config = config
   )
   
-  plot_neighbours_per_clade(combined_df, plot_count_codh = TRUE)
+  plot_neighbours_per_clade(combined_df, plot_count_codh = TRUE, config = config)
   
   # Correlation plot
   pn_info("Generating correlation matrix")
@@ -190,7 +195,8 @@ main <- function(config_file = "config/config.yaml", override_params = NULL) {
       select(PIGI, assembly, clade) %>% # nolint
       unique() %>%
       select(assembly, clade), 
-    unique(combined_df$clade)
+    unique(combined_df$clade),
+    config = config
   )
   
   # Clade histograms
@@ -199,7 +205,8 @@ main <- function(config_file = "config/config.yaml", override_params = NULL) {
     combined_df %>%
       select(PIGI, assembly, clade) %>% # nolint: object_usage_linter.
       unique(),
-    clade_colors = config$visualization$clade_colors
+    clade_colors = config$visualization$clade_colors,
+    config = config
   )
   
   # Neighbour plot with annotated neighbours if available
@@ -209,12 +216,14 @@ main <- function(config_file = "config/config.yaml", override_params = NULL) {
       combined_df %>% mutate(COG_LETTER = ANNOTATION),  # nolint
       exclude_unknown_clade = TRUE,
             exclude_unknown_cog = TRUE, 
-      output_path = "annotated_neighbours"
+      output_path = "annotated_neighbours",
+      config = config
     )
 
     plot_neighbours_per_clade(
       combined_df %>% mutate(COG_LETTER = ANNOTATION),  # nolint: object_usage_linter.
-      output_path = "annotated_neighbours"
+      output_path = "annotated_neighbours",
+      config = config
     )
 
     plot_neighbours_per_clade(
@@ -222,19 +231,27 @@ main <- function(config_file = "config/config.yaml", override_params = NULL) {
       exclude_unknown_clade = TRUE,
       exclude_unknown_cog = TRUE,
       output_path = "annotated_neighbours",
-      plot_count_codh = TRUE
+      plot_count_codh = TRUE,
+      config = config
     )
 
     plot_neighbours_per_clade(
       combined_df %>% mutate(COG_LETTER = ANNOTATION),  # nolint
       output_path = "annotated_neighbours",
-      plot_count_codh = TRUE
+      plot_count_codh = TRUE,
+      config = config
     )
   }
 
   # Generate HTML report of the analysis
   pn_info("Generating analysis report")
   generate_analysis_report(combined_df, config, output_dir)
+
+  # Save session information for reproducibility
+  save_session_info(output_dir)
+  
+  # Log input file information for reproducibility
+  pn_input_files(config)
 
   pn_info("Analysis complete. Results available in", output_dir)
 

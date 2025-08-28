@@ -25,6 +25,7 @@ analysis:
   overlap: 50
   protein_of_interest: null          # Default to null, can be set at runtime
   date: null                         # Date for outputs (null uses current date)
+  seed: null                         # Random seed for reproducibility (null for deterministic)
 
 # Annotation settings
 annotation:
