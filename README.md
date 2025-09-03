@@ -1,6 +1,8 @@
 # Protein Genomic Environment Analysis
 
-This project provides a comprehensive **R package and pipeline** for analyzing the genomic neighborhood of proteins. You can use it as a standard R package (recommended for reproducibility and modularity), or simply run the main script directly if you prefer a quick, script-based workflow.
+This project provides a comprehensive **Python package and pipeline** for analyzing the genomic neighborhood of proteins. You can use it as a standard Python package (recommended for reproducibility and modularity), or simply run the main script directly if you prefer a quick, script-based workflow.
+
+> **Note:** This repository has been converted from R to Python. The original R version functionality is preserved but implemented using Python equivalents (pandas instead of dplyr, matplotlib/seaborn instead of ggplot2, biopython for GFF parsing, etc.).
 
 ---
 
@@ -48,6 +50,28 @@ If you don’t want to install the package, you can simply source and run the ma
 ---
 
 ### Prerequisites
+
+**Python Requirements:**
+- Python >= 3.8
+- Required packages (automatically installed with pip):
+  - `pandas` >= 1.3.0 (data manipulation)
+  - `numpy` >= 1.20.0 (numerical computing)
+  - `matplotlib` >= 3.3.0 (plotting)
+  - `seaborn` >= 0.11.0 (statistical visualization)
+  - `biopython` >= 1.79 (GFF file parsing)
+  - `pyyaml` >= 5.4.0 (configuration files)
+  - `scipy` >= 1.7.0 (statistical analysis)
+  - `jinja2` >= 3.0.0 (HTML report generation)
+  - `click` >= 8.0.0 (command-line interface)
+  - `tqdm` >= 4.60.0 (progress bars)
+
+**Optional Dependencies:**
+- `eggnog-mapper` >= 2.1.0 (for protein annotation)
+
+**System Requirements:**
+- For eggNOG annotation: eggNOG-mapper installed and accessible in PATH
+
+---
 
 - **R** (>= 4.0.0)
 - Required R packages (will be installed automatically if you use the package):
