@@ -399,6 +399,8 @@ logging:
 ## Further Documentation
 
 - **[Targets Pipeline Guide](docs/TARGETS_GUIDE.md)**: Comprehensive guide to using the targets pipeline
+- **[Targets Quick Reference](docs/TARGETS_QUICK_REFERENCE.md)**: Quick reference card for common targets commands
+- **[Example Script](examples/run_targets_example.R)**: Example demonstrating pipeline usage
 - **Package Vignettes**: Run `browseVignettes("proteinNeighbours")` for tutorials
 - **Function Documentation**: Use `?function_name` in R for detailed help
 
