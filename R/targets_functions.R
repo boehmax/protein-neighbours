@@ -167,7 +167,8 @@ invalidate_targets <- function(target_names) {
     stop("Package 'targets' is required. Please install it with: install.packages('targets')")
   }
   
-  targets::tar_invalidate(matches(target_names))
+  # Invalidate each target by name
+  targets::tar_invalidate(all_of(target_names))
   message(paste("Invalidated targets:", paste(target_names, collapse = ", ")))
   invisible(TRUE)
 }

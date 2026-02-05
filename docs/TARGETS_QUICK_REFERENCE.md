@@ -89,7 +89,7 @@ tar_make()                               # Re-run affected targets
 
 ### Debugging Issues
 ```r
-tar_meta(fields = error, complete_only = TRUE)  # Check errors
+tar_meta(fields = "error", complete_only = TRUE)  # Check errors
 tar_workspace(problematic_target)               # Load workspace
 tar_load_everything()                           # Load all dependencies
 # Debug interactively...
