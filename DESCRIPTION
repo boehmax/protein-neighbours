@@ -18,4 +18,7 @@ Imports:
     gggenes,
     RColorBrewer,
     logger,
-    rmarkdown
+    rmarkdown,
+    targets,
+    tarchetypes,
+    crew
