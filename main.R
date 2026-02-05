@@ -3,6 +3,18 @@
 #' This script coordinates the analysis of the genomic environment of proteins.
 #' It loads configuration, sets up logging, and runs the analysis pipeline.
 #'
+#' NOTE: This package now supports the {targets} pipeline framework for better
+#' reproducibility, dependency tracking, and caching. To use the targets pipeline:
+#'   1. Run: targets::tar_make()
+#'   2. Visualize: targets::tar_visnetwork()
+#'   3. Load results: targets::tar_read(combined_df)
+#'
+#' See _targets.R for the pipeline definition and R/targets_functions.R for
+#' convenience functions like run_targets_pipeline() and visualize_pipeline().
+#'
+#' This main.R script is maintained for backward compatibility and can still
+#' be used in the traditional way by calling main().
+#'
 #' @author Maximilian Böhm
 #' @version 0.2.0
 

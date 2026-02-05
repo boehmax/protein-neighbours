@@ -1,6 +1,6 @@
 # Protein Genomic Environment Analysis
 
-This project provides a comprehensive **R package and pipeline** for analyzing the genomic neighborhood of proteins. You can use it as a standard R package (recommended for reproducibility and modularity), or simply run the main script directly if you prefer a quick, script-based workflow.
+This project provides a comprehensive **R package and pipeline** for analyzing the genomic neighborhood of proteins. The pipeline now uses the **{targets}** framework for better reproducibility, automatic dependency tracking, intelligent caching, and parallel execution support.
 
 ---
 
@@ -59,14 +59,14 @@ If you don’t want to install the package, you can simply source and run the ma
     - yaml
     - logger (optional, for enhanced logging)
     - rmarkdown (optional, for report generation)
+    - **targets** (for pipeline management) - *NEW*
+    - **tarchetypes** (for specialized target types) - *NEW*
+    - **crew** (optional, for advanced parallel execution) - *NEW*
 - **eggNOG-mapper** (external, for protein annotation)
     - [eggNOG-mapper Documentation](http://eggnog-mapper.embl.de/)
     - Install with: `pip install eggnog-mapper`
 
 ---
-
-You can now follow the rest of the instructions below for configuration, data requirements, and usage.  
-**Whether you use the package or just the script, the workflow and outputs are the same!**
 
 ## Overview
 
@@ -79,6 +79,82 @@ This package explores and analyzes the genomic environment of proteins by:
 5. Creating reports for sharing and documentation
 
 ## Running the Pipeline
+
+### 🎯 Using the Targets Pipeline (Recommended)
+
+The **targets** pipeline provides automatic caching, dependency tracking, and parallel execution. This is now the recommended way to run the analysis.
+
+#### Basic Usage
+
+```r
+# Load the targets library
+library(targets)
+
+# Run the entire pipeline
+tar_make()
+
+# Visualize the pipeline structure and dependencies
+tar_visnetwork()
+
+# Load specific results
+combined_df <- tar_read(combined_df)
+config <- tar_read(config)
+all_neighbours <- tar_read(all_neighbours)
+
+# Check pipeline status
+tar_progress()
+
+# See which targets need to be updated
+tar_outdated()
+```
+
+#### Using Convenience Functions
+
+The package provides helper functions for common tasks:
+
+```r
+library(proteinNeighbours)
+
+# Run the pipeline
+run_targets_pipeline()
+
+# Visualize the pipeline
+visualize_pipeline()
+
+# Load results
+df <- load_target("combined_df")
+
+# Check progress
+get_pipeline_progress()
+
+# Clean cache to start fresh
+clean_targets_cache()
+
+# Run with parallel execution (4 workers)
+run_targets_parallel(workers = 4)
+```
+
+#### Pipeline Features
+
+- **Automatic Caching**: Targets only re-runs steps when inputs change
+- **Dependency Tracking**: Automatically determines which steps need updating
+- **Parallel Execution**: Independent targets can run simultaneously
+- **Progress Monitoring**: Track pipeline execution in real-time
+- **Reproducibility**: Complete record of all dependencies and versions
+
+#### Typical Workflow
+
+1. **Configure** your analysis by editing `config/config.yaml`
+2. **Run** the pipeline with `tar_make()` or `run_targets_pipeline()`
+3. **Visualize** dependencies with `tar_visnetwork()` or `visualize_pipeline()`
+4. **Load results** with `tar_read(target_name)` or `load_target("target_name")`
+5. **Update** config if needed and re-run - only changed parts will execute!
+
+---
+
+### Traditional Method (Backward Compatible)
+
+You can still use the traditional approach by calling the main function directly:
 
 1. **Source the main script:**
 
@@ -212,6 +288,61 @@ output/{date}/
 
 ## Advanced Usage
 
+### Working with the Targets Pipeline
+
+The targets pipeline provides several advanced features:
+
+#### Inspecting the Pipeline
+
+```r
+# View all targets in the pipeline
+tar_manifest()
+
+# See the dependency graph
+tar_network()
+
+# Check which targets are outdated
+tar_outdated()
+
+# View build history
+tar_meta()
+```
+
+#### Selective Execution
+
+```r
+# Run only specific targets
+tar_make(names = c("config", "protein_assembly_data"))
+
+# Invalidate specific targets to force re-run
+tar_invalidate(c("annotation_results", "combined_df"))
+tar_make()
+```
+
+#### Parallel Execution
+
+```r
+# Using future package for local parallel execution
+library(future)
+plan(multisession, workers = 4)
+tar_make_future()
+
+# Or use the convenience function
+run_targets_parallel(workers = 4)
+```
+
+#### Debugging
+
+```r
+# Load the workspace for a specific target
+tar_workspace(annotation_results)
+
+# Run a target interactively
+tar_load(all_neighbours)
+tar_load(config)
+# Now you can debug interactively
+```
+
 ### Manual Annotation
 
 1. Run the initial analysis
@@ -247,6 +378,13 @@ create_clade_histograms2(df)
 - **eggNOG-mapper errors**: Verify eggNOG installation and database files
 - **Memory issues**: Reduce the number of proteins or assemblies being analyzed
 
+### Targets-Specific Issues
+
+- **Pipeline won't run**: Make sure you're in the project directory with `_targets.R` present
+- **Targets not updating**: Use `tar_invalidate()` to force re-execution of specific targets
+- **Out of memory**: Targets stores intermediate results; use `tar_prune()` to clean old targets
+- **Stale cache**: Use `tar_destroy()` to completely reset the pipeline (warning: deletes all cached results)
+
 ### Logging
 
 The package uses the logger package for detailed logging. To enable debugging:
@@ -257,6 +395,14 @@ logging:
   level: "DEBUG"  # Options: DEBUG, INFO, WARNING, ERROR
   file: "protein_neighbors.log"
 ```
+
+## Further Documentation
+
+- **[Targets Pipeline Guide](docs/TARGETS_GUIDE.md)**: Comprehensive guide to using the targets pipeline
+- **[Targets Quick Reference](docs/TARGETS_QUICK_REFERENCE.md)**: Quick reference card for common targets commands
+- **[Example Script](examples/run_targets_example.R)**: Example demonstrating pipeline usage
+- **Package Vignettes**: Run `browseVignettes("proteinNeighbours")` for tutorials
+- **Function Documentation**: Use `?function_name` in R for detailed help
 
 ## Contributing
 
@@ -275,6 +421,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## Acknowledgments
 
 - Original development by Maximilian Böhm
+- [targets](https://docs.ropensci.org/targets/) pipeline framework by Will Landau
 - eggNOG-mapper for protein annotation
 - NCBI for genome data and protein information
 

@@ -26,6 +26,10 @@
 .Rproj.user/
 *.Rproj
 
+# Targets pipeline cache
+_targets/
+_targets.yaml
+
 # Specific things to ignore
 output/
 data/
