@@ -1,5 +1,7 @@
 # Protein Genomic Environment Analysis
 
+<a href="https://doi.org/10.5281/zenodo.16736722"><img src="https://zenodo.org/badge/759921808.svg" alt="DOI"></a>
+
 This project provides a comprehensive **R package and pipeline** for analyzing the genomic neighborhood of proteins. You can use it as a standard R package (recommended for reproducibility and modularity), or simply run the main script directly if you prefer a quick, script-based workflow.
 
 ---
