@@ -112,6 +112,39 @@ This package explores and analyzes the genomic environment of proteins by:
 
 ---
 
+## Reproducibility Features
+
+This package includes several features to ensure reproducible research:
+
+### Configuration-Based Analysis
+
+- All analysis parameters are stored in YAML configuration files
+- The configuration used for each analysis is automatically saved to the output directory
+- Override parameters without modifying configuration files
+
+### Deterministic Output
+
+- Set a specific analysis date to ensure consistent output paths: `analysis.date: "2024-01-15"`
+- Use a fixed random seed for reproducible randomized processes: `analysis.seed: 12345`
+- If no seed is provided, a deterministic seed is generated based on analysis parameters
+
+### Metadata Tracking
+
+- Session information (R version, packages) is automatically saved
+- Input file metadata (size, modification time, line counts) is tracked
+- Analysis configuration and timestamps are preserved
+- CSV exports include metadata headers with analysis details
+
+### Example Reproducible Configuration
+
+```yaml
+analysis:
+  basepairs: 300
+  max_neighbors: 15
+  date: "2024-01-15"        # Fixed date for consistent output paths
+  seed: 42                  # Fixed seed for reproducibility
+```
+
 ## Configuration
 
 The package uses a YAML configuration file for all parameters. You can customize the analysis by:
@@ -198,7 +231,13 @@ output/{date}/
 ├── all_neighbours_bp{basepairs}_n{max_neighbors}.csv   # Neighbor information
 ├── all_protein_info.csv                               # Protein information
 ├── analysis_config.yaml                               # Configuration used
+├── session_info.yaml                                  # R session information
+├── session_info.txt                                   # Human-readable session info
 ├── input_file_info.csv                                # Input file metadata
+├── summary_statistics.csv                             # Analysis summary statistics
+├── clade_distribution.csv                             # Protein distribution by clade
+├── neighbors_per_protein.csv                          # Neighbor counts per protein
+├── neighbor_type_distribution.csv                     # COG category distribution
 ├── analysis_report.html                               # HTML report
 ├── eggnog/                                            # eggNOG annotation results
 ├── types_of_neighbours.csv                            # Neighbor type counts

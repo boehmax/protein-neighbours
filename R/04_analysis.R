@@ -66,7 +66,7 @@ amount_of_neighbours <- function(cog_data, output_dir = NULL) {
                         ggplot2::aes(x = reorder(Description, -n), y = n)) +
         ggplot2::geom_bar(stat = "identity") +
         ggplot2::labs(title = "Types of Neighbors by COG Category",
-                  x = "Descritption",
+                  x = "Description",
                   y = "Count") +
         ggplot2::theme_minimal() +
         ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1))
@@ -340,7 +340,7 @@ calculate_correlation <- function(df, vector) {
 #' @param output_dir Directory to save output files (default is based on current date).
 #' @return A list of summary statistics.
 #' @export
-generate_summary_statistics <- function(combined_data, output_dir = NULL) {
+generate_summary_statistics <- function(combined_data, output_dir = NULL, config = NULL) {
   # Set output directory
   current_date <- format(Sys.Date(), "%Y-%m-%d")
   if (is.null(output_dir)) {
@@ -410,20 +410,20 @@ generate_summary_statistics <- function(combined_data, output_dir = NULL) {
       stringsAsFactors = FALSE
     )
     
-    # Save summary statistics
+    # Save summary statistics with metadata
     output_file <- file.path(output_dir, "summary_statistics.csv")
-    readr::write_csv(summary_df, output_file)
+    write_csv_with_metadata(summary_df, output_file, "Summary statistics of protein neighborhood analysis", config)
     pn_info("Saved summary statistics to:", output_file)
     
-    # Save detailed statistics
+    # Save detailed statistics with metadata
     output_file <- file.path(output_dir, "clade_distribution.csv")
-    readr::write_csv(results$clade_counts, output_file)
+    write_csv_with_metadata(results$clade_counts, output_file, "Distribution of proteins by clade", config)
     
     output_file <- file.path(output_dir, "neighbors_per_protein.csv")
-    readr::write_csv(results$neighbors_per_protein, output_file)
+    write_csv_with_metadata(results$neighbors_per_protein, output_file, "Number of neighbors per protein", config)
     
     output_file <- file.path(output_dir, "neighbor_type_distribution.csv")
-    readr::write_csv(results$neighbor_type_dist, output_file)
+    write_csv_with_metadata(results$neighbor_type_dist, output_file, "Distribution of neighbor types by COG category", config)
     
     pn_info("Successfully generated summary statistics")
     return(results)

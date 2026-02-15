@@ -95,6 +95,17 @@ override_config <- function(config, override_params) {
 #' @importFrom yaml write_yaml
 #' @keywords internal
 save_config <- function(config, output_dir) {
+  # Add metadata for reproducibility
+  config$metadata <- list(
+    created_on = format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z"),
+    r_version = R.version.string,
+    package_version = tryCatch({
+      as.character(utils::packageVersion("proteinNeighbours"))
+    }, error = function(e) {
+      "0.2.0"  # Fallback version
+    })
+  )
+  
   # Save the configuration to the output directory
   yaml::write_yaml(config, file.path(output_dir, "analysis_config.yaml"))
 }
@@ -159,6 +170,126 @@ pn_input_files <- function(config) {
   }
   
   return(file_info)
+}
+
+#' Save session information for reproducibility
+#'
+#' This function saves R session information to the output directory.
+#'
+#' @param output_dir The output directory
+#' @return Invisible NULL, called for side effects
+#' @export
+save_session_info <- function(output_dir) {
+  tryCatch({
+    # Get session info
+    session_info <- sessionInfo()
+    
+    # Save as text file
+    sink(file.path(output_dir, "session_info.txt"))
+    print(session_info)
+    sink()
+    
+    # Also save as structured data
+    session_data <- list(
+      R_version = session_info$R.version$version.string,
+      platform = session_info$platform,
+      locale = session_info$locale,
+      base_packages = session_info$basePkgs,
+      other_packages = if(length(session_info$otherPkgs) > 0) {
+        sapply(session_info$otherPkgs, function(x) paste(x$Package, x$Version, sep = "_"))
+      } else {
+        character(0)
+      },
+      loaded_packages = if(length(session_info$loadedOnly) > 0) {
+        sapply(session_info$loadedOnly, function(x) paste(x$Package, x$Version, sep = "_"))
+      } else {
+        character(0)
+      }
+    )
+    
+    # Save as YAML for easier parsing
+    yaml::write_yaml(session_data, file.path(output_dir, "session_info.yaml"))
+    
+  }, error = function(e) {
+    warning("Failed to save session info: ", e$message)
+  })
+}
+
+#' Set random seed for reproducibility
+#'
+#' This function sets a random seed based on configuration or uses a default.
+#'
+#' @param config The configuration list
+#' @return The seed value used
+#' @export
+set_reproducible_seed <- function(config) {
+  # Use seed from config if provided, otherwise use a default
+  seed <- if(!is.null(config$analysis$seed)) {
+    config$analysis$seed
+  } else {
+    # Use a deterministic seed based on analysis parameters
+    sum(utf8ToInt(paste(config$analysis$basepairs, config$analysis$max_neighbors, 
+                       config$analysis$date, sep = "_"))) %% 2147483647
+  }
+  
+  set.seed(seed)
+  pn_info("Set random seed to:", seed)
+  return(seed)
+}
+
+#' Write CSV with metadata header
+#'
+#' This function writes a CSV file with metadata comments at the top.
+#'
+#' @param data The data frame to write
+#' @param file The output file path
+#' @param description A description of the data
+#' @param config The configuration list (optional)
+#' @return Invisible NULL, called for side effects
+#' @export
+write_csv_with_metadata <- function(data, file, description, config = NULL) {
+  tryCatch({
+    # Create metadata header
+    metadata_lines <- c(
+      paste("# Protein Neighbours Analysis Output"),
+      paste("# Description:", description),
+      paste("# Generated on:", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z")),
+      paste("# R version:", R.version.string),
+      paste("# Rows:", nrow(data)),
+      paste("# Columns:", ncol(data))
+    )
+    
+    # Add configuration info if provided
+    if (!is.null(config)) {
+      metadata_lines <- c(
+        metadata_lines,
+        paste("# Analysis date:", config$analysis$date),
+        paste("# Basepairs:", config$analysis$basepairs),
+        paste("# Max neighbors:", config$analysis$max_neighbors)
+      )
+    }
+    
+    # Add column descriptions
+    if (ncol(data) > 0) {
+      metadata_lines <- c(
+        metadata_lines,
+        paste("# Columns:", paste(colnames(data), collapse = ", "))
+      )
+    }
+    
+    metadata_lines <- c(metadata_lines, "#")
+    
+    # Write metadata header
+    writeLines(metadata_lines, file)
+    
+    # Append data without header (since we have our own)
+    readr::write_csv(data, file, append = TRUE)
+    
+  }, error = function(e) {
+    # Fallback to standard write if metadata write fails
+    warning("Failed to write metadata header, using standard CSV write: ", e$message)
+    readr::write_csv(data, file)
+  })
 }
 
 #' Set up standalone logging

@@ -22,14 +22,18 @@
 #' @export
 plot_neighbours_per_clade <- function(combined_data, exclude_unknown_clade = FALSE, 
                                      exclude_unknown_cog = FALSE, output_path = NULL, 
-                                     plot_count_codh = FALSE, width = 30, height = 15) {
+                                     plot_count_codh = FALSE, width = 30, height = 15, config = NULL) {
   pn_info("Plotting neighbors per clade")
   pn_info(paste("Parameters: exclude_unknown_clade =", exclude_unknown_clade, 
                 ", exclude_unknown_cog =", exclude_unknown_cog,
                 ", plot_count_codh =", plot_count_codh))
   
   # Set output directory
-  current_date <- format(Sys.Date(), "%Y-%m-%d")
+  current_date <- if (!is.null(config) && !is.null(config$analysis$date)) {
+    config$analysis$date
+  } else {
+    format(Sys.Date(), "%Y-%m-%d")
+  }
   if (is.null(output_path)) {
     output_path <- file.path("output", current_date)
   } else {
@@ -305,9 +309,9 @@ create_plot <- function(neighbour_count, clade_labels, plot_height) {
       axis.title.x = ggplot2::element_blank(),
       axis.text.x = ggplot2::element_blank(),
       axis.ticks.x = ggplot2::element_blank(),
-      axis.ticks.y = ggplot2::element_line(colour = "black", size = 0.5, linetype = "solid"),
+      axis.ticks.y = ggplot2::element_line(colour = "black", linewidth = 0.5, linetype = "solid"),
       axis.ticks.length = ggplot2::unit(.2, "cm"),
-      axis.line.y = ggplot2::element_line(colour = "black", size = 0.5, linetype = "solid"),
+      axis.line.y = ggplot2::element_line(colour = "black", linewidth = 0.5, linetype = "solid"),
       strip.background = ggplot2::element_blank(),
       panel.spacing.x = ggplot2::unit(-0.1, "cm"),
       legend.position = "right"
@@ -447,11 +451,15 @@ plot_correlation_matrix <- function(correlation.matrix) {
 #' @return A ggplot object representing the correlation matrix plot if supress_output is FALSE.
 #' @export
 make_correlation_matrix <- function(df, vector, supress_output = FALSE, 
-                                   output_dir = NULL, width = 15, height = 15) {
+                                   output_dir = NULL, width = 15, height = 15, config = NULL) {
   pn_info("Creating and saving correlation matrix")
   
   # Set output directory
-  current_date <- format(Sys.Date(), "%Y-%m-%d")
+  current_date <- if (!is.null(config) && !is.null(config$analysis$date)) {
+    config$analysis$date
+  } else {
+    format(Sys.Date(), "%Y-%m-%d")
+  }
   if (is.null(output_dir)) {
     output_dir <- file.path('output', current_date)
   }
@@ -509,11 +517,15 @@ create_clade_histograms2 <- function(fasta_data,
                                    clade_colors = c("#FFD92F", "#A6D854", "#FC8D62", 
                                                    "#E78AC3", "#8DA0CB", "#66C2A5", 
                                                    "#56B4E9", "#E5C494", "#B3B3B3", "pink", "green"),
-                                   output_dir = NULL, width = 10, height = 10) {
+                                   output_dir = NULL, width = 10, height = 10, config = NULL) {
   pn_info("Creating clade histograms")
   
   # Set output directory
-  current_date <- format(Sys.Date(), "%Y-%m-%d")
+  current_date <- if (!is.null(config) && !is.null(config$analysis$date)) {
+    config$analysis$date
+  } else {
+    format(Sys.Date(), "%Y-%m-%d")
+  }
   if (is.null(output_dir)) {
     output_dir <- file.path('output', current_date)
   }
